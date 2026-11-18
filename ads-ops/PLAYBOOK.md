@@ -10,6 +10,11 @@ Không cần mở Ads Manager.
   Business Settings rồi lưu lại bằng `request_credential` (host `graph.facebook.com`).
 - Kiểm tra kết nối: `python3 ads-ops/meta.py accounts`.
 
+## 0b. Trang và biểu mẫu
+- Tài khoản OFFICIAL dùng trang "Bot Bán Hàng"; OFFICIAL 2 dùng trang "Bot Bán Hàng - Hà Nội". Biểu mẫu phải cùng trang.
+- Đọc biểu mẫu (`/{page_id}/leadgen_forms`) và bài viết cần **page access token**: lấy bằng `GET /{page_id}?fields=access_token`
+  rồi truyền `access_token=` cho riêng request đó. Chỉ giữ trong bộ nhớ, không in ra, không ghi file, không commit.
+
 ## 1. Nguyên tắc an toàn (bắt buộc)
 | # | Quy tắc |
 |---|---|
@@ -29,7 +34,7 @@ Không cần mở Ads Manager.
 3. Chạy `meta.py audit --account X`.
 4. Trả lời theo đúng format ở mục 4.
 
-### B0. Nguồn sự thật: Google Sheet "Lên camp Meta – 1 sheet (v4: nhắm chọn + số liệu thực tế)"
+### B0. Nguồn sự thật: Google Sheet "Lên camp Meta – 1 sheet (v5: biểu mẫu + fanpage thật)"
 Tìm theo tên trên Google Drive (không ghi ID sheet vào repo vì repo công khai). Chỉ 2 tab:
 - `Lên camp`: **1 dòng = 1 quảng cáo**. Dòng có "Trạng thái" = bắt đầu chiến dịch mới (Ngành, Khu vực, Ngân sách/ngày,
   Ngày bắt đầu, Tài khoản). Dòng có "Tệp đối tượng" = bắt đầu nhóm quảng cáo mới (Tệp loại trừ, Tuổi). Ô trống = thừa hưởng

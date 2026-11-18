@@ -29,18 +29,19 @@ Không cần mở Ads Manager.
 3. Chạy `meta.py audit --account X`.
 4. Trả lời theo đúng format ở mục 4.
 
-### B0. Nguồn sự thật: Google Sheet "Lên camp Meta – 1 sheet (v2: ngân sách nhóm + lịch chạy)"
+### B0. Nguồn sự thật: Google Sheet "Lên camp Meta – 1 sheet (v3: dữ liệu thật)"
 Tìm theo tên trên Google Drive (không ghi ID sheet vào repo vì repo công khai). Chỉ 2 tab:
 - `Lên camp`: **1 dòng = 1 quảng cáo**. Dòng có "Trạng thái" = bắt đầu chiến dịch mới (Ngành, Khu vực, Ngân sách/ngày,
   Ngày bắt đầu, Tài khoản). Dòng có "Tệp đối tượng" = bắt đầu nhóm quảng cáo mới (Tệp loại trừ, Tuổi). Ô trống = thừa hưởng
   từ dòng trên trong cùng chiến dịch/nhóm. Cột "Video/ảnh hoặc ID bài viết": link Drive = tạo mới (cần Nội dung chính),
   dạng `pageid_postid` = dùng bài viết có sẵn. Ô trống ở Tài khoản/Tuổi/Biểu mẫu = lấy mặc định.
   Ngân sách: "Ngân sách chiến dịch/ngày" có giá trị → ngân sách cấp chiến dịch; để trống → dùng "Ngân sách nhóm/ngày" ở từng
-  dòng bắt đầu nhóm. Lịch: "Bắt đầu/Kết thúc (ngày giờ)" giờ Việt Nam áp cho mọi nhóm; "Khung giờ chạy" (vd `8-12, 19-23`,
+  dòng bắt đầu nhóm. Lịch: "Bắt đầu/Kết thúc (ngày giờ)" giờ Việt Nam điền ở từng dòng bắt đầu nhóm; "Khung giờ chạy" (vd `8-12, 19-23`,
   `T2-T6 8-22`) là lịch theo giờ của nhóm → Meta bắt buộc ngân sách trọn đời: đổi thành ngân sách/ngày × số ngày, báo user số này.
 - `Danh mục`: mặc định cố định (mục tiêu khách hàng tiềm năng + biểu mẫu tức thì, ngân sách cấp chiến dịch, CTA, ghi nhận
   1 ngày sau khi nhấp, Advantage+ đối tượng tắt, vị trí Advantage+, tắt đề xuất tự động), giới hạn ngân sách, ngành + chi phí
-  mỗi lead mục tiêu, khu vực, tài khoản + trang, biểu mẫu, thư viện tệp đối tượng (mã → ID trên Meta).
+  mỗi lead mục tiêu, khu vực, tài khoản + trang, biểu mẫu, thư viện tệp đối tượng thật (mã OF1-/OF2- theo tài khoản,
+  LAL = tương tự, KH = tệp khách hàng → ID trên Meta; ID tệp chỉ dùng được trong đúng tài khoản đó).
 
 Khi user nói "lên camp theo sheet" hoặc chỉ ra dòng cần dựng:
 1. Lấy các chiến dịch Trạng thái = **Sẵn sàng** và mọi dòng thuộc chiến dịch đó có Kiểm tra bắt đầu bằng "OK".

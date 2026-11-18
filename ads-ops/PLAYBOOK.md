@@ -34,38 +34,29 @@ Không cần mở Ads Manager.
 3. Chạy `meta.py audit --account X`.
 4. Trả lời theo đúng format ở mục 4.
 
-### B0. Nguồn sự thật: Google Sheet "Lên camp Meta – 1 sheet (v8: link Drive video)"
-Tìm theo tên trên Google Drive (không ghi ID sheet vào repo vì repo công khai). Chỉ 2 tab:
-- `Lên camp`: **1 dòng = 1 quảng cáo**. Dòng có "Trạng thái" = bắt đầu chiến dịch mới (Ngành, Khu vực, Ngân sách/ngày,
-  Ngày bắt đầu, Tài khoản). Dòng có "Tệp đối tượng" = bắt đầu nhóm quảng cáo mới (Tệp loại trừ, Tuổi). Ô trống = thừa hưởng
-  từ dòng trên trong cùng chiến dịch/nhóm. Cột "Video/ảnh hoặc ID bài viết": link Drive = tạo mới (cần Nội dung chính),
-  dạng `pageid_postid` = dùng bài viết có sẵn. Ô trống ở Tài khoản/Tuổi/Biểu mẫu = lấy mặc định.
-  Media: "Link Google Drive (video/ảnh)" (tạo mới) HOẶC "ID bài viết có sẵn"; "Ảnh bìa video (link Drive)" tùy chọn.
-  Quy trình tạo mới: lấy file ID từ link → tải bằng Google Drive connector (download_file_content) vào thư mục tạm riêng →
-  upload lên tài khoản: video `POST /{act}/advideos` (file >~1 GB dùng upload theo đoạn), ảnh `POST /{act}/adimages` →
-  chờ video xử lý xong (`GET /{video_id}?fields=status`) → tạo creative với page của tài khoản, biểu mẫu, nội dung, tiêu đề.
-  Không lấy được file (không có quyền, quá lớn) thì báo user, không dựng thiếu.
-  Tên do user tự điền: "Tên chiến dịch" (dòng có Trạng thái), "Tên nhóm quảng cáo" (dòng bắt đầu nhóm), "Tên quảng cáo"
-  (mọi dòng). Dùng đúng tên này khi dựng trên Meta, không tự đặt lại.
-  Nhóm có thêm Giới tính, Địa điểm (tỉnh/thành trong tab Danh mục, kèm mã vùng Meta), Mở rộng của Meta
-  ("Advantage+ đối tượng", "Mở rộng địa điểm", trống = tắt).
-  Nhóm cột "SỐ LIỆU 7 NGÀY" (cột xám) là số thật theo từng quảng cáo; khi user nói "cập nhật số liệu", kéo insights
-  `last_7d` cấp ad và đưa bảng giá trị để dán (hoặc dựng lại file).
-  Ngân sách: "Ngân sách chiến dịch/ngày" có giá trị → ngân sách cấp chiến dịch; để trống → dùng "Ngân sách nhóm/ngày" ở từng
-  dòng bắt đầu nhóm. Lịch: "Bắt đầu/Kết thúc (ngày giờ)" giờ Việt Nam điền ở từng dòng bắt đầu nhóm; "Khung giờ chạy" (vd `8-12, 19-23`,
-  `T2-T6 8-22`) là lịch theo giờ của nhóm → Meta bắt buộc ngân sách trọn đời: đổi thành ngân sách/ngày × số ngày, báo user số này.
-- `Danh mục`: mặc định cố định (mục tiêu khách hàng tiềm năng + biểu mẫu tức thì, ngân sách cấp chiến dịch, CTA, ghi nhận
-  1 ngày sau khi nhấp, Advantage+ đối tượng tắt, vị trí Advantage+, tắt đề xuất tự động), giới hạn ngân sách, ngành + chi phí
-  mỗi lead mục tiêu, khu vực, tài khoản + trang, biểu mẫu, thư viện tệp đối tượng thật (mã OF1-/OF2- theo tài khoản,
-  LAL = tương tự, KH = tệp khách hàng → ID trên Meta; ID tệp chỉ dùng được trong đúng tài khoản đó).
+### B0. Nguồn sự thật: Google Sheet "Kế hoạch quảng cáo Meta (mỗi chiến dịch 1 tab)"
+Tìm theo tên trên Google Drive (không ghi ID sheet vào repo vì repo công khai). Cấu trúc:
+- `Tổng quan`: cột A = tên tab chiến dịch; các cột khác tự đọc từ tab đó (tên, trạng thái, ngân sách, số nhóm, số QC, kiểm tra).
+- `Đang chạy`: báo cáo camp đang chạy (chiến dịch ▸ nhóm • quảng cáo, nhắm chọn, số liệu 7 ngày). Chỉ xem; AI dựng lại khi
+  user nói "cập nhật số liệu".
+- `Mẫu chiến dịch` + mỗi chiến dịch 1 tab (nhân bản từ mẫu). Ô cố định trong mỗi tab:
+  - ① B4 tên, B5 trạng thái, B6 tài khoản (trống = mặc định), B7 trang (tự), B8 ngành, B9 khu vực, B10 ngân sách đặt ở
+    ("Chiến dịch"/"Nhóm quảng cáo"), B11 ngân sách chiến dịch/ngày, B12 biến thử nghiệm, B13 ghi chú;
+    G4 tổng ngân sách, G5 số nhóm, G6 số QC sẽ tạo, G7 mục tiêu chi phí/lead, G8 chi phí/lead 7 ngày (AI), G9 ID chiến dịch (AI), G10 kiểm tra.
+  - ② Nhóm = cột B..F (Nhóm 1..5), hàng 18 tên, 19 tệp, 20 loại trừ, 21 tuổi, 22 giới tính, 23 địa điểm, 24 mở rộng,
+    25 ngân sách nhóm, 26 bắt đầu, 27 kết thúc, 28 khung giờ; 29 số QC, 30 kiểm tra; 31–35 AI ghi (ID, chi tiêu, lead, chi phí/lead, tần suất).
+  - ③ Quảng cáo = hàng 39–48: A chạy ở nhóm ("Tất cả" = mọi nhóm có tên, hoặc "Nhóm 1, 3"), B tên, C link Drive,
+    D ảnh bìa, E ID bài viết, F nội dung chính, G tiêu đề, H biểu mẫu; I–K tự tính; L–O AI ghi.
+  - Mỗi dòng ③ được tạo thành 1 quảng cáo trong MỖI nhóm nó chạy (vd 4 dòng × 3 nhóm = 12 quảng cáo trên Meta).
+- `Danh mục`: mặc định, giới hạn, ngành + mục tiêu chi phí/lead, khu vực + mã vùng Meta, tài khoản + trang, biểu mẫu thật,
+  thư viện tệp đối tượng thật (OF1 = OFFICIAL, OF2 = OFFICIAL 2; ID tệp chỉ dùng trong đúng tài khoản).
 
-Khi user nói "lên camp theo sheet" hoặc chỉ ra dòng cần dựng:
-1. Lấy các chiến dịch Trạng thái = **Sẵn sàng** và mọi dòng thuộc chiến dịch đó có Kiểm tra bắt đầu bằng "OK".
-2. Kiểm tra chéo: tệp cũ (ghi rõ nếu vẫn dùng), ngân sách trong giới hạn, không trùng tệp + khu vực với chiến dịch đang chạy,
-   ngân sách dưới ngưỡng "chỉ nên dùng 1 nhóm" mà có nhiều nhóm thì cảnh báo.
-3. Dựng trên Meta, tất cả PAUSED, theo mặc định ở tab `Danh mục`; định dạng (video/ảnh) xác định theo file thực tế.
-4. Báo lại: ID chiến dịch, nhóm, quảng cáo và nội dung cần ghi vào 2 cột xám ("ID quảng cáo trên Meta", "Ghi chú của AI"
-   kèm ID chiến dịch/nhóm), đổi Trạng thái thành "Đã dựng" hoặc "Lỗi kiểm tra". Connector Drive chỉ đọc được sheet.
+Khi user nói "lên camp <tên tab>":
+1. Đọc tab đó; chỉ làm khi B5 = **Sẵn sàng** và G10 = **OK**.
+2. Kiểm tra chéo: tệp cũ, trùng tệp + khu vực với camp đang chạy, giới hạn ngân sách, biểu mẫu cùng trang.
+3. Dựng trên Meta, tất cả PAUSED: chiến dịch → từng nhóm → mỗi dòng ③ × mỗi nhóm nó chạy. Media: link Drive (tải qua
+   Drive connector rồi upload) hoặc ID bài viết (object_story_id). Có khung giờ → ngân sách trọn đời = ngân sách/ngày × số ngày.
+4. Báo lại ID và giá trị cần dán vào ô xám (G9, hàng 31 từng nhóm, cột O từng dòng ③), đổi B5 = "Đã dựng".
 5. Chỉ bật chạy khi user xác nhận.
 
 ### B. "Lên camp ..." (camp mới)

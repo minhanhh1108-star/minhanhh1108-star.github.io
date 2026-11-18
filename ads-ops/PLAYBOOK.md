@@ -29,24 +29,24 @@ Không cần mở Ads Manager.
 3. Chạy `meta.py audit --account X`.
 4. Trả lời theo đúng format ở mục 4.
 
-### B0. Nguồn sự thật: Google Sheet "Kế hoạch quảng cáo Meta – file tổng hợp"
-Tìm theo tên trên Google Drive (không ghi ID sheet vào repo vì repo công khai). File đi theo cấu trúc Meta:
-`1. Chiến dịch` → `2. Nhóm quảng cáo` → `3. Quảng cáo` → `4. Biểu mẫu`, liên kết bằng mã (CD-01, NQC-01-1, QC-01-1-1, BM-01).
-Tab `Tổng quan` = 1 dòng/quảng cáo kèm nhóm, chiến dịch, biểu mẫu. Tab `Danh mục` = tham số, ngành và chi phí mỗi lead mục tiêu,
-khu vực, tài khoản, trang, thư viện tệp đối tượng (mã → ID trên Meta). `Nhật ký` = mọi hành động của AI.
+### B0. Nguồn sự thật: Google Sheet "Lên camp Meta – 1 sheet"
+Tìm theo tên trên Google Drive (không ghi ID sheet vào repo vì repo công khai). Chỉ 2 tab:
+- `Lên camp`: **1 dòng = 1 quảng cáo**. Dòng có "Trạng thái" = bắt đầu chiến dịch mới (Ngành, Khu vực, Ngân sách/ngày,
+  Ngày bắt đầu, Tài khoản). Dòng có "Tệp đối tượng" = bắt đầu nhóm quảng cáo mới (Tệp loại trừ, Tuổi). Ô trống = thừa hưởng
+  từ dòng trên trong cùng chiến dịch/nhóm. Cột "Video/ảnh hoặc ID bài viết": link Drive = tạo mới (cần Nội dung chính),
+  dạng `pageid_postid` = dùng bài viết có sẵn. Ô trống ở Tài khoản/Tuổi/Biểu mẫu = lấy mặc định.
+- `Danh mục`: mặc định cố định (mục tiêu khách hàng tiềm năng + biểu mẫu tức thì, ngân sách cấp chiến dịch, CTA, ghi nhận
+  1 ngày sau khi nhấp, Advantage+ đối tượng tắt, vị trí Advantage+, tắt đề xuất tự động), giới hạn ngân sách, ngành + chi phí
+  mỗi lead mục tiêu, khu vực, tài khoản + trang, biểu mẫu, thư viện tệp đối tượng (mã → ID trên Meta).
 
-Khi user nói "lên camp theo sheet" hoặc "xử lý kế hoạch":
-1. Đọc tab `1. Chiến dịch`, lấy dòng Trạng thái = **Sẵn sàng** và Kiểm tra = **OK**; lấy toàn bộ nhóm, quảng cáo, biểu mẫu thuộc mã đó.
-2. Kiểm tra chéo: nội dung "Đã duyệt"; tệp đối tượng không cảnh báo "Cũ" (nếu có thì ghi rõ); ngân sách trong giới hạn tab `Danh mục`;
-   không trùng tệp và khu vực với chiến dịch đang chạy.
-3. Dựng trên Meta, mọi thứ ở trạng thái PAUSED: chiến dịch (ngân sách ở cấp "Nơi đặt ngân sách") → nhóm (tệp đối tượng: đổi mã
-   thành ID qua thư viện) → quảng cáo (bài viết có sẵn dùng `object_story_id`; tạo mới thì upload media) → gắn biểu mẫu.
-   Tắt mọi đề xuất tự động của Meta.
-4. Báo lại: ID từng cấp, cảnh báo, và nội dung cần ghi vào sheet (cột xám, trạng thái "Đã dựng"/"Lỗi kiểm tra", 1 dòng `Nhật ký`).
-   Connector Google Drive chỉ đọc được sheet: nếu chưa có cách ghi thì đưa sẵn nội dung để user dán.
+Khi user nói "lên camp theo sheet" hoặc chỉ ra dòng cần dựng:
+1. Lấy các chiến dịch Trạng thái = **Sẵn sàng** và mọi dòng thuộc chiến dịch đó có Kiểm tra bắt đầu bằng "OK".
+2. Kiểm tra chéo: tệp cũ (ghi rõ nếu vẫn dùng), ngân sách trong giới hạn, không trùng tệp + khu vực với chiến dịch đang chạy,
+   ngân sách dưới ngưỡng "chỉ nên dùng 1 nhóm" mà có nhiều nhóm thì cảnh báo.
+3. Dựng trên Meta, tất cả PAUSED, theo mặc định ở tab `Danh mục`; định dạng (video/ảnh) xác định theo file thực tế.
+4. Báo lại: ID chiến dịch, nhóm, quảng cáo và nội dung cần ghi vào 2 cột xám ("ID quảng cáo trên Meta", "Ghi chú của AI"
+   kèm ID chiến dịch/nhóm), đổi Trạng thái thành "Đã dựng" hoặc "Lỗi kiểm tra". Connector Drive chỉ đọc được sheet.
 5. Chỉ bật chạy khi user xác nhận.
-
-Vòng đời trạng thái chiến dịch: Nháp → Sẵn sàng → Đang dựng → Đã dựng → (Lỗi kiểm tra) → Đã duyệt → Đang chạy → Tạm dừng → Đã tắt.
 
 ### B. "Lên camp ..." (camp mới)
 1. Làm rõ brief, tối đa 5 câu hỏi nếu thiếu: sản phẩm hoặc ngành, vùng, tệp, budget/ngày, creative (video_id hoặc file), form lead.

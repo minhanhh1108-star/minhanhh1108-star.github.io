@@ -34,12 +34,17 @@ Không cần mở Ads Manager.
 3. Chạy `meta.py audit --account X`.
 4. Trả lời theo đúng format ở mục 4.
 
-### B0. Nguồn sự thật: Google Sheet "Lên camp Meta – 1 sheet (v7: tự đặt tên)"
+### B0. Nguồn sự thật: Google Sheet "Lên camp Meta – 1 sheet (v8: link Drive video)"
 Tìm theo tên trên Google Drive (không ghi ID sheet vào repo vì repo công khai). Chỉ 2 tab:
 - `Lên camp`: **1 dòng = 1 quảng cáo**. Dòng có "Trạng thái" = bắt đầu chiến dịch mới (Ngành, Khu vực, Ngân sách/ngày,
   Ngày bắt đầu, Tài khoản). Dòng có "Tệp đối tượng" = bắt đầu nhóm quảng cáo mới (Tệp loại trừ, Tuổi). Ô trống = thừa hưởng
   từ dòng trên trong cùng chiến dịch/nhóm. Cột "Video/ảnh hoặc ID bài viết": link Drive = tạo mới (cần Nội dung chính),
   dạng `pageid_postid` = dùng bài viết có sẵn. Ô trống ở Tài khoản/Tuổi/Biểu mẫu = lấy mặc định.
+  Media: "Link Google Drive (video/ảnh)" (tạo mới) HOẶC "ID bài viết có sẵn"; "Ảnh bìa video (link Drive)" tùy chọn.
+  Quy trình tạo mới: lấy file ID từ link → tải bằng Google Drive connector (download_file_content) vào thư mục tạm riêng →
+  upload lên tài khoản: video `POST /{act}/advideos` (file >~1 GB dùng upload theo đoạn), ảnh `POST /{act}/adimages` →
+  chờ video xử lý xong (`GET /{video_id}?fields=status`) → tạo creative với page của tài khoản, biểu mẫu, nội dung, tiêu đề.
+  Không lấy được file (không có quyền, quá lớn) thì báo user, không dựng thiếu.
   Tên do user tự điền: "Tên chiến dịch" (dòng có Trạng thái), "Tên nhóm quảng cáo" (dòng bắt đầu nhóm), "Tên quảng cáo"
   (mọi dòng). Dùng đúng tên này khi dựng trên Meta, không tự đặt lại.
   Nhóm có thêm Giới tính, Địa điểm (tỉnh/thành trong tab Danh mục, kèm mã vùng Meta), Mở rộng của Meta

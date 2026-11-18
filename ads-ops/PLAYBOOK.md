@@ -29,12 +29,16 @@ Không cần mở Ads Manager.
 3. Chạy `meta.py audit --account X`.
 4. Trả lời theo đúng format ở mục 4.
 
-### B0. Nguồn sự thật: Google Sheet "Lên camp Meta – 1 sheet (v3: dữ liệu thật)"
+### B0. Nguồn sự thật: Google Sheet "Lên camp Meta – 1 sheet (v4: nhắm chọn + số liệu thực tế)"
 Tìm theo tên trên Google Drive (không ghi ID sheet vào repo vì repo công khai). Chỉ 2 tab:
 - `Lên camp`: **1 dòng = 1 quảng cáo**. Dòng có "Trạng thái" = bắt đầu chiến dịch mới (Ngành, Khu vực, Ngân sách/ngày,
   Ngày bắt đầu, Tài khoản). Dòng có "Tệp đối tượng" = bắt đầu nhóm quảng cáo mới (Tệp loại trừ, Tuổi). Ô trống = thừa hưởng
   từ dòng trên trong cùng chiến dịch/nhóm. Cột "Video/ảnh hoặc ID bài viết": link Drive = tạo mới (cần Nội dung chính),
   dạng `pageid_postid` = dùng bài viết có sẵn. Ô trống ở Tài khoản/Tuổi/Biểu mẫu = lấy mặc định.
+  Nhóm có thêm Giới tính, Địa điểm (tỉnh/thành trong tab Danh mục, kèm mã vùng Meta), Mở rộng của Meta
+  ("Advantage+ đối tượng", "Mở rộng địa điểm", trống = tắt).
+  Nhóm cột "SỐ LIỆU 7 NGÀY" (cột xám) là số thật theo từng quảng cáo; khi user nói "cập nhật số liệu", kéo insights
+  `last_7d` cấp ad và đưa bảng giá trị để dán (hoặc dựng lại file).
   Ngân sách: "Ngân sách chiến dịch/ngày" có giá trị → ngân sách cấp chiến dịch; để trống → dùng "Ngân sách nhóm/ngày" ở từng
   dòng bắt đầu nhóm. Lịch: "Bắt đầu/Kết thúc (ngày giờ)" giờ Việt Nam điền ở từng dòng bắt đầu nhóm; "Khung giờ chạy" (vd `8-12, 19-23`,
   `T2-T6 8-22`) là lịch theo giờ của nhóm → Meta bắt buộc ngân sách trọn đời: đổi thành ngân sách/ngày × số ngày, báo user số này.

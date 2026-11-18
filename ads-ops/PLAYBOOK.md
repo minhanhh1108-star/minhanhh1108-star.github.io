@@ -17,7 +17,7 @@ Không cần mở Ads Manager.
 | 2 | **BẬT** camp chỉ khi user nói rõ "bật / chạy / OK chạy" cho đúng object đó. Lúc chạy lệnh mới thêm `--confirm`. |
 | 3 | Đổi budget: luôn cho user xem trước (chạy không có `--confirm`), user đồng ý rồi mới thêm `--confirm`. Thay đổi > 30% cần thêm `--force` và phải có lý do rõ. |
 | 4 | Không xóa object. Muốn bỏ thì chỉ tắt (PAUSED). |
-| 5 | Budget mới vượt `max_new_daily_budget` trong config thì script tự chặn. Chỉ nâng giới hạn khi user yêu cầu. |
+| 5 | Budget mới phải từ 150.000 đến 1.000.000 đ/ngày, tổng camp mới trong 1 ngày không quá 2.000.000 đ (theo tab Cấu hình). Script tự chặn mức trên. |
 | 6 | Mọi thay đổi được ghi vào `ads-ops/logs/changes.jsonl` (không commit). |
 | 7 | Đề xuất phải kèm số liệu (spend, kết quả, CPA, kỳ so sánh). Không đề xuất theo cảm tính. |
 
@@ -28,6 +28,23 @@ Không cần mở Ads Manager.
 2. Chạy `meta.py report --account X --preset last_7d` (kỳ trước dùng `--preset last_14d`, hoặc so sánh với `last_week_mon_sun`).
 3. Chạy `meta.py audit --account X`.
 4. Trả lời theo đúng format ở mục 4.
+
+### B0. Nguồn sự thật: Google Sheet "Bảng điều khiển lên chiến dịch (bản tiếng Việt)"
+Tìm sheet này trên Google Drive theo tên (không ghi ID sheet vào repo vì repo công khai). Các tab:
+Hướng dẫn, Brief chiến dịch, Nội dung quảng cáo, Hình ảnh và video, Tệp đối tượng, Cấu hình, Nhật ký.
+Khi user nói "lên camp theo sheet" hoặc "xử lý brief":
+1. Đọc tab "Brief chiến dịch", chỉ lấy dòng có Trạng thái = **Sẵn sàng** và cột Kiểm tra = **OK**.
+2. Kiểm tra chéo: mã nội dung phải ở trạng thái "Đã duyệt" trong tab "Nội dung quảng cáo"; mã hình ảnh/video phải "Đã duyệt";
+   tệp đối tượng không bị cảnh báo "Cũ" (nếu bị cảnh báo thì vẫn làm nhưng ghi rõ trong ghi chú); ngân sách nằm trong giới hạn tab "Cấu hình".
+3. Dựng camp theo mục B bên dưới (ưu tiên nhân bản "Chiến dịch mẫu để nhân bản"), đặt tên đúng cột "Tên chiến dịch dự kiến",
+   tắt các đề xuất tự động của Meta, ngân sách dưới "Ngưỡng ngân sách dùng 1 nhóm quảng cáo" thì chỉ để 1 nhóm.
+4. Báo lại cho user: ID chiến dịch, kết quả kiểm tra, cảnh báo, và nội dung cần ghi vào sheet
+   (Trạng thái "Đã dựng" hoặc "Lỗi kiểm tra", "ID chiến dịch trên Meta", "Ghi chú của AI", 1 dòng tab "Nhật ký").
+   Connector Google Drive hiện chỉ đọc được sheet, chưa ghi được ô: nếu chưa có cách ghi thì đưa sẵn nội dung để user dán.
+5. Chỉ bật chạy khi user xác nhận (tương ứng trạng thái "Đã duyệt" → "Đang chạy").
+
+Vòng đời trạng thái: Nháp → Sẵn sàng → Đang dựng → Đã dựng → (Lỗi kiểm tra) → Đã duyệt → Đang chạy → Tạm dừng.
+Chi phí mỗi lead mục tiêu theo ngành lấy từ tab "Cấu hình" (đã đồng bộ vào `config.json` → `target_cpa_by_industry`).
 
 ### B. "Lên camp ..." (camp mới)
 1. Làm rõ brief, tối đa 5 câu hỏi nếu thiếu: sản phẩm hoặc ngành, vùng, tệp, budget/ngày, creative (video_id hoặc file), form lead.
@@ -49,7 +66,7 @@ Thực hiện theo nguyên tắc ở mục 1. Xác nhận lại đúng tên và 
 ## 3. Luật quyết định (cấu hình trong `config.json`)
 - **Tắt**: tiêu ≥ 2× target CPA mà không có kết quả; hoặc CPA > 1.5× target khi đã tiêu ≥ 2× target.
 - **Scale**: CPA < 0.8× target và có ≥ 10 kết quả trong kỳ. Mỗi lần tăng tối đa +20%, cách nhau ≥ 3 ngày.
-- **Theo dõi**: frequency > 3 (dấu hiệu creative fatigue); CTR < 0.8% sau 2.000 impressions (hook yếu).
+- **Theo dõi**: frequency > 2,5 (dấu hiệu creative fatigue); CTR < 0.8% sau 2.000 impressions (hook yếu).
 - Ad set mới chạy < 3 ngày hoặc chưa qua learning: chỉ theo dõi, không tắt (trừ khi đốt tiền rõ ràng).
 - Luật chỉ là bộ lọc đầu tiên. Claude phải tự kiểm tra lại ngữ cảnh (camp mới, sự kiện, mùa vụ) trước khi đề xuất.
 
@@ -67,4 +84,4 @@ và gửi báo cáo về. Task này **chỉ đọc và đề xuất**, không t�
 ## 6. Giới hạn đã biết
 - KPI hiện tại là `lead` (lead form trên Meta), **không phải** lead chất lượng hay doanh thu. Muốn tối ưu đúng,
   cần nối dữ liệu từ CRM (Conversions API, hoặc export deal và CPA theo deal).
-- `target_cpa` trong config là giá trị user phải xác nhận. Không tự đổi.
+- Mục tiêu chi phí mỗi lead theo ngành lấy từ sheet; `target_cpa` chung (127.000) chỉ dùng khi không xác định được ngành của camp.

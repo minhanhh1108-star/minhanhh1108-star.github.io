@@ -4,17 +4,38 @@
   "accounts": "auto",
   "kpi": {
     "primary_action": "lead",
-    "fallback_actions": ["onsite_conversion.lead_grouped", "offsite_complete_registration_add_meta_leads", "onsite_conversion.messaging_conversation_started_7d"],
-    "target_cpa": 150000,
-    "max_frequency_7d": 3.0,
-    "min_ctr_pct": 0.8
+    "fallback_actions": [
+      "onsite_conversion.lead_grouped",
+      "offsite_complete_registration_add_meta_leads",
+      "onsite_conversion.messaging_conversation_started_7d"
+    ],
+    "target_cpa": 127000,
+    "max_frequency_7d": 2.5,
+    "min_ctr_pct": 0.8,
+    "target_cpa_by_industry": {
+      "Mỹ phẩm": 127000,
+      "Đa ngành": 107000,
+      "Salon": 102000,
+      "Spa": 125000,
+      "Thời trang": 128000,
+      "Gia dụng": 133000,
+      "Điện thoại": 130000,
+      "Máy công nghiệp": 150000,
+      "Ăn uống (F&B)": 120000
+    }
   },
   "guardrails": {
     "new_objects_status": "PAUSED",
-    "max_new_daily_budget": 500000,
+    "max_new_daily_budget": 1000000,
     "max_budget_change_pct": 30,
-    "max_total_daily_budget_per_account": 5000000,
-    "require_confirm_for": ["activate", "budget_change", "delete"]
+    "require_confirm_for": [
+      "activate",
+      "budget_change",
+      "delete"
+    ],
+    "min_new_daily_budget": 150000,
+    "max_total_new_daily_budget_per_day": 2000000,
+    "single_adset_below_budget": 500000
   },
   "rules": {
     "kill_if_spend_x_target_no_result": 2.0,
@@ -23,5 +44,6 @@
     "scale_if_cpa_under_target_x": 0.8,
     "scale_min_results": 10,
     "scale_step_pct": 20
-  }
+  },
+  "_source": "Ngưỡng đồng bộ từ tab 'Cấu hình' của Google Sheet 'Bảng điều khiển lên chiến dịch (bản tiếng Việt)'. Sheet là nguồn sự thật: khi sheet đổi, cập nhật lại file này."
 }

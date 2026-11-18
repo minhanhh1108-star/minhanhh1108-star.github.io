@@ -34,7 +34,7 @@ Không cần mở Ads Manager.
 3. Chạy `meta.py audit --account X`.
 4. Trả lời theo đúng format ở mục 4.
 
-### B0. Nguồn sự thật: Google Sheet "Kế hoạch quảng cáo Meta (mỗi chiến dịch 1 tab)"
+### B0. Nguồn sự thật: Google Sheet "Kế hoạch quảng cáo Meta (mỗi chiến dịch 1 tab) – v2 nhiều tệp"
 Tìm theo tên trên Google Drive (không ghi ID sheet vào repo vì repo công khai). Cấu trúc:
 - `Tổng quan`: cột A = tên tab chiến dịch; các cột khác tự đọc từ tab đó (tên, trạng thái, ngân sách, số nhóm, số QC, kiểm tra).
 - `Đang chạy`: báo cáo camp đang chạy (chiến dịch ▸ nhóm • quảng cáo, nhắm chọn, số liệu 7 ngày). Chỉ xem; AI dựng lại khi
@@ -43,9 +43,10 @@ Tìm theo tên trên Google Drive (không ghi ID sheet vào repo vì repo công 
   - ① B4 tên, B5 trạng thái, B6 tài khoản (trống = mặc định), B7 trang (tự), B8 ngành, B9 khu vực, B10 ngân sách đặt ở
     ("Chiến dịch"/"Nhóm quảng cáo"), B11 ngân sách chiến dịch/ngày, B12 biến thử nghiệm, B13 ghi chú;
     G4 tổng ngân sách, G5 số nhóm, G6 số QC sẽ tạo, G7 mục tiêu chi phí/lead, G8 chi phí/lead 7 ngày (AI), G9 ID chiến dịch (AI), G10 kiểm tra.
-  - ② Nhóm = cột B..F (Nhóm 1..5), hàng 18 tên, 19 tệp, 20 loại trừ, 21 tuổi, 22 giới tính, 23 địa điểm, 24 mở rộng,
-    25 ngân sách nhóm, 26 bắt đầu, 27 kết thúc, 28 khung giờ; 29 số QC, 30 kiểm tra; 31–35 AI ghi (ID, chi tiêu, lead, chi phí/lead, tần suất).
-  - ③ Quảng cáo = hàng 39–48: A chạy ở nhóm ("Tất cả" = mọi nhóm có tên, hoặc "Nhóm 1, 3"), B tên, C link Drive,
+  - ② Nhóm = cột B..F (Nhóm 1..5), hàng 18 tên, 19–22 tệp bao gồm 1–4, 23–25 tệp loại trừ 1–3 (mỗi ô 1 mã), 26 tuổi,
+    27 giới tính, 28 địa điểm, 29 mở rộng, 30 ngân sách nhóm, 31 bắt đầu, 32 kết thúc, 33 khung giờ; 34 số QC, 35 kiểm tra;
+    36–40 AI ghi (ID, chi tiêu, lead, chi phí/lead, tần suất).
+  - ③ Quảng cáo = hàng 44–53: A chạy ở nhóm ("Tất cả" = mọi nhóm có tên, hoặc "Nhóm 1, 3"), B tên, C link Drive,
     D ảnh bìa, E ID bài viết, F nội dung chính, G tiêu đề, H biểu mẫu; I–K tự tính; L–O AI ghi.
   - Mỗi dòng ③ được tạo thành 1 quảng cáo trong MỖI nhóm nó chạy (vd 4 dòng × 3 nhóm = 12 quảng cáo trên Meta).
 - `Danh mục`: mặc định, giới hạn, ngành + mục tiêu chi phí/lead, khu vực + mã vùng Meta, tài khoản + trang, biểu mẫu thật,
@@ -56,7 +57,7 @@ Khi user nói "lên camp <tên tab>":
 2. Kiểm tra chéo: tệp cũ, trùng tệp + khu vực với camp đang chạy, giới hạn ngân sách, biểu mẫu cùng trang.
 3. Dựng trên Meta, tất cả PAUSED: chiến dịch → từng nhóm → mỗi dòng ③ × mỗi nhóm nó chạy. Media: link Drive (tải qua
    Drive connector rồi upload) hoặc ID bài viết (object_story_id). Có khung giờ → ngân sách trọn đời = ngân sách/ngày × số ngày.
-4. Báo lại ID và giá trị cần dán vào ô xám (G9, hàng 31 từng nhóm, cột O từng dòng ③), đổi B5 = "Đã dựng".
+4. Báo lại ID và giá trị cần dán vào ô xám (G9, hàng 36 từng nhóm, cột O từng dòng ③), đổi B5 = "Đã dựng".
 5. Chỉ bật chạy khi user xác nhận.
 
 ### B. "Lên camp ..." (camp mới)

@@ -34,7 +34,7 @@ Không cần mở Ads Manager.
 3. Chạy `meta.py audit --account X`.
 4. Trả lời theo đúng format ở mục 4.
 
-### B0. Nguồn sự thật: Google Sheet "Lên camp Meta – 1 sheet (v5: biểu mẫu + fanpage thật)"
+### B0. Nguồn sự thật: Google Sheet "Lên camp Meta – 1 sheet (v6: chọn tệp đối tượng)"
 Tìm theo tên trên Google Drive (không ghi ID sheet vào repo vì repo công khai). Chỉ 2 tab:
 - `Lên camp`: **1 dòng = 1 quảng cáo**. Dòng có "Trạng thái" = bắt đầu chiến dịch mới (Ngành, Khu vực, Ngân sách/ngày,
   Ngày bắt đầu, Tài khoản). Dòng có "Tệp đối tượng" = bắt đầu nhóm quảng cáo mới (Tệp loại trừ, Tuổi). Ô trống = thừa hưởng

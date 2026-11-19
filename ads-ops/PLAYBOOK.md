@@ -34,6 +34,12 @@ Không cần mở Ads Manager.
 3. Chạy `meta.py audit --account X`.
 4. Trả lời theo đúng format ở mục 4.
 
+### B00. Web app "Lên camp Meta" (Apps Script, thư mục `ads-ops/webapp/`)
+Cả nhóm lên camp qua web app; app tự gọi Meta API (token trong Script Properties của dự án Apps Script) và dựng camp
+TẠM DỪNG; người duyệt bấm "Bật chạy". Hướng dẫn cài đặt: `ads-ops/webapp/HUONG_DAN_CAI_DAT.md`.
+Khi user nhờ sửa app: sửa file trong `ads-ops/webapp/`, chạy lại giả lập (gas_mock + e2e) nếu có, rồi nhắc user dán
+bản mới và tạo "Phiên bản mới" cho bản triển khai. Sheet kế hoạch bên dưới là cách làm cũ (vẫn dùng được).
+
 ### B0. Nguồn sự thật: Google Sheet "Kế hoạch quảng cáo Meta (mỗi chiến dịch 1 tab) – v2 nhiều tệp"
 Tìm theo tên trên Google Drive (không ghi ID sheet vào repo vì repo công khai). Cấu trúc:
 - `Tổng quan`: cột A = tên tab chiến dịch; các cột khác tự đọc từ tab đó (tên, trạng thái, ngân sách, số nhóm, số QC, kiểm tra).

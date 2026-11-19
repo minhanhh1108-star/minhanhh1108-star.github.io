@@ -431,6 +431,28 @@ function viewDashboard() {
     '<p class="muted">Không thấy báo cáo? (1) Chủ báo cáo bật nhúng: trong Looker Studio → Tệp → Nhúng báo cáo → Bật nhúng. (2) Người xem phải có quyền xem báo cáo (Chia sẻ). (3) Hoặc bấm "Mở trong tab mới".</p>';
 }
 
+function viewReportSettings() {
+  var R = S.rep;
+  if (!R) { call('reportStatus').then(function (d) { S.rep = d; render(); }); return '<div class="card"><div class="hd"><span class="ttl">Báo cáo Telegram</span> <span class="spinner"></span></div></div>'; }
+  var r = R.report, st = R.status;
+  var hours = []; for (var i = 5; i <= 12; i++) hours.push(i);
+  var h = '<div class="card"><div class="hd"><span class="ttl">Báo cáo Telegram hằng ngày</span><span class="muted">' + (st.trigger ? 'Đang bật, gửi lúc ~' + r.hour + 'h15' : 'Đang tắt') + '</span></div><div class="bd">';
+  h += '<div class="row"><div class="fld"><label>Token bot Telegram ' + (st.hasToken ? '<span class="badge b-ok">đã lưu ' + esc(st.bot) + '</span>' : '<span class="badge b-warn">chưa có</span>') + '</label>' +
+    '<div class="bar"><input type="password" id="tg-token" placeholder="Dán token từ @BotFather (123456789:AA…)" autocomplete="off"><button class="btn sm" data-act="saveTgToken">Lưu token</button></div>' +
+    '<span class="muted">Token chỉ lưu trong thuộc tính bí mật của app, không hiện lại.</span></div></div>';
+  h += '<div class="row"><div class="fld"><label>Nhóm nhận báo cáo</label><div class="bar"><input type="text" id="tg-chat" value="' + esc(r.chatId || '') + '" placeholder="Chat ID" style="max-width:220px">' +
+    '<button class="btn sm" data-act="findChats">Tìm nhóm</button></div>' + (S.tgChats ? '<div class="chips" style="margin-top:6px">' + (S.tgChats.length ? S.tgChats.map(function (c) {
+      return '<label class="chip" data-act="pickChat" data-id="' + esc(c.id) + '">' + esc(c.title) + ' · ' + esc(c.type) + '</label>'; }).join('') : '<span class="muted">Chưa thấy nhóm nào. Thêm bot vào nhóm, nhắn 1 tin trong nhóm rồi bấm lại "Tìm nhóm".</span>') + '</div>' : '') + '</div>' +
+    '<div class="fld s" style="flex:0 0 160px"><label>Giờ gửi</label><select id="tg-hour">' + hours.map(function (x) { return '<option value="' + x + '"' + (Number(r.hour) === x ? ' selected' : '') + '>' + x + 'h15</option>'; }).join('') + '</select></div>' +
+    '<div class="fld s" style="flex:0 0 160px"><label>Trạng thái</label><label class="chip' + (r.enabled ? ' on' : '') + '"><input type="checkbox" id="tg-on"' + (r.enabled ? ' checked' : '') + '>Bật gửi tự động</label></div></div>';
+  h += '<details style="margin-top:12px"><summary>Cấu hình nguồn số liệu và BU (nâng cao)</summary><textarea id="rep-json" style="min-height:200px;font-family:monospace;font-size:12px;margin-top:8px">' +
+    esc(JSON.stringify({ crmSheetId: r.crmSheetId, costTab: r.costTab, revenueSheetId: r.revenueSheetId, dealTab: r.dealTab, bus: r.bus }, null, 2)) + '</textarea></details>';
+  h += '<div class="bar" style="margin-top:12px"><button class="btn p" data-act="saveReport">Lưu cấu hình báo cáo</button><button class="btn" data-act="previewReport">Xem trước báo cáo hôm qua</button>' +
+    '<button class="btn go" data-act="sendReportNow">Gửi thử vào Telegram</button></div>';
+  if (S.repPreview) h += '<pre style="background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:12px;white-space:pre-wrap;margin-top:10px">' + esc(S.repPreview) + '</pre>';
+  return h + '</div></div>';
+}
+
 function viewSettings() {
   var s = S.settings, L = s.limits;
   var num = function (k, label) { return '<div class="fld s" style="flex:0 0 200px"><label>' + label + '</label><input type="number" data-set="limits.' + k + '" value="' + esc(L[k]) + '"></div>'; };
@@ -447,6 +469,7 @@ function viewSettings() {
       '<button class="btn sm danger" data-act="delDash" data-i="' + i + '">Xóa</button></div>'; }).join('') +
     '<button class="btn sm" data-act="addDash" style="margin-top:8px">+ Thêm báo cáo</button></div></div>';
   h += '<div class="card"><div class="hd"><span class="ttl">Email nhận thông báo (cách nhau bằng dấu phẩy)</span></div><div class="bd"><input type="text" data-setlist="notifyEmails" value="' + esc((s.notifyEmails || []).join(', ')) + '"></div></div>';
+  h += viewReportSettings();
   h += '<div class="card"><div class="hd"><span class="ttl">Nâng cao: tài khoản, trang, khu vực (JSON)</span></div><div class="bd"><textarea id="adv-json" style="min-height:220px;font-family:monospace;font-size:12px">' +
     esc(JSON.stringify({ accounts: s.accounts, regions: s.regions, defaults: s.defaults }, null, 2)) + '</textarea></div></div>';
   return h + '<button class="btn p" data-act="saveSettings">Lưu cài đặt</button>';
@@ -595,6 +618,18 @@ document.addEventListener('click', function (e) {
     pickDash: function () { S.dashIdx = +el.dataset.i; rerender(); },
     addDash: function () { S.settings.dashboards = (S.settings.dashboards || []).concat([{ name: '', url: '' }]); rerender(); },
     delDash: function () { S.settings.dashboards.splice(+el.dataset.i, 1); rerender(); },
+    saveTgToken: function () { var t = $('#tg-token').value; if (!t) return; el.disabled = true;
+      call('setTelegramToken', { token: t }).then(function (d) { toast('Đã lưu token bot ' + d.bot); S.rep = null; render(); }).catch(function () { el.disabled = false; }); },
+    findChats: function () { el.innerHTML = '<span class="spinner"></span>'; call('telegramChats').then(function (c) { S.tgChats = c; rerender(); }).catch(rerender); },
+    pickChat: function () { $('#tg-chat').value = el.dataset.id; },
+    saveReport: function () {
+      var adv; try { adv = JSON.parse($('#rep-json').value); } catch (x) { return toast('JSON cấu hình báo cáo không hợp lệ', true); }
+      var rep = Object.assign({}, adv, { chatId: $('#tg-chat').value.trim(), hour: Number($('#tg-hour').value), enabled: $('#tg-on').checked });
+      call('saveReport', { report: rep }).then(function (d) { S.rep = d; toast('Đã lưu cấu hình báo cáo'); rerender(); });
+    },
+    previewReport: function () { el.innerHTML = '<span class="spinner"></span> Đang tính…'; call('previewReport', {}).then(function (r) { S.repPreview = r.text; rerender(); }).catch(rerender); },
+    sendReportNow: function () { if (!confirm('Gửi báo cáo ngày hôm qua vào nhóm Telegram?')) return; el.innerHTML = '<span class="spinner"></span>';
+      call('sendReportNow', {}).then(function (r) { S.repPreview = r.text; toast('Đã gửi vào Telegram'); rerender(); }).catch(rerender); },
     addIndustry: function () { S.settings.industries.push({ name: '', target: 120000 }); rerender(); },
     saveSettings: function () {
       try { var adv = JSON.parse($('#adv-json').value); Object.assign(S.settings, adv); } catch (err) { return toast('JSON nâng cao không hợp lệ', true); }

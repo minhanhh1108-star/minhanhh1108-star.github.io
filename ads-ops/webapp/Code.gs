@@ -84,7 +84,13 @@ function handlers_() { return {
   listBehaviors: { role: 'runner',   fn: function () { return listBehaviors_(); } },
   listUsers:     { role: 'admin',    fn: function () { return listUsers_(); } },
   saveUser:      { role: 'admin',    fn: saveUser_ },
-  saveSettings:  { role: 'admin',    fn: saveSettings_ }
+  saveSettings:  { role: 'admin',    fn: saveSettings_ },
+  reportStatus:  { role: 'admin',    fn: function () { return { report: reportConfig_(), status: telegramStatus_() }; } },
+  saveReport:    { role: 'admin',    fn: saveReport_ },
+  setTelegramToken: { role: 'admin', fn: setTelegramToken_ },
+  telegramChats: { role: 'admin',    fn: function () { return telegramChats_(); } },
+  previewReport: { role: 'runner',   fn: function (u, p) { return buildDailyReport(p.day); } },
+  sendReportNow: { role: 'admin',    fn: function (u, p) { var r = buildDailyReport(p.day); sendTelegramText_(r.text); logAction_(u.email, '', 'Gửi thử báo cáo Telegram', r.day, 'OK', ''); return r; } }
 }; }
 
 /* =========================== Setup =========================== */

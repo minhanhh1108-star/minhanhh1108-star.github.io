@@ -442,7 +442,7 @@ function viewReportSettings() {
     '<span class="muted">Token chỉ lưu trong thuộc tính bí mật của app, không hiện lại.</span></div></div>';
   h += '<div class="row"><div class="fld"><label>Nhóm nhận báo cáo</label><div class="bar"><input type="text" id="tg-chat" value="' + esc(r.chatId || '') + '" placeholder="Chat ID" style="max-width:220px">' +
     '<button class="btn sm" data-act="findChats">Tìm nhóm</button></div>' + (S.tgChats ? '<div class="chips" style="margin-top:6px">' + (S.tgChats.length ? S.tgChats.map(function (c) {
-      return '<label class="chip" data-act="pickChat" data-id="' + esc(c.id) + '">' + esc(c.title) + ' · ' + esc(c.type) + '</label>'; }).join('') : '<span class="muted">Chưa thấy nhóm nào. Thêm bot vào nhóm, nhắn 1 tin trong nhóm rồi bấm lại "Tìm nhóm".</span>') + '</div>' : '') + '</div>' +
+      return '<label class="chip' + (String(r.chatId) === String(c.id) ? ' on' : '') + '" data-act="pickChat" data-id="' + esc(c.id) + '">' + esc(c.title) + ' · ' + esc(c.type) + '</label>'; }).join('') : '<span class="muted">Chưa thấy nhóm nào. Thêm bot vào nhóm, nhắn 1 tin trong nhóm rồi bấm lại "Tìm nhóm".</span>') + '</div>' : '') + '</div>' +
     '<div class="fld s" style="flex:0 0 160px"><label>Giờ gửi</label><select id="tg-hour">' + hours.map(function (x) { return '<option value="' + x + '"' + (Number(r.hour) === x ? ' selected' : '') + '>' + x + 'h15</option>'; }).join('') + '</select></div>' +
     '<div class="fld s" style="flex:0 0 160px"><label>Trạng thái</label><label class="chip' + (r.enabled ? ' on' : '') + '"><input type="checkbox" id="tg-on"' + (r.enabled ? ' checked' : '') + '>Bật gửi tự động</label></div></div>';
   h += '<details style="margin-top:12px"><summary>Cấu hình nguồn số liệu và BU (nâng cao)</summary><textarea id="rep-json" style="min-height:200px;font-family:monospace;font-size:12px;margin-top:8px">' +
@@ -621,15 +621,14 @@ document.addEventListener('click', function (e) {
     saveTgToken: function () { var t = $('#tg-token').value; if (!t) return; el.disabled = true;
       call('setTelegramToken', { token: t }).then(function (d) { toast('Đã lưu token bot ' + d.bot); S.rep = null; render(); }).catch(function () { el.disabled = false; }); },
     findChats: function () { el.innerHTML = '<span class="spinner"></span>'; call('telegramChats').then(function (c) { S.tgChats = c; rerender(); }).catch(rerender); },
-    pickChat: function () { $('#tg-chat').value = el.dataset.id; },
-    saveReport: function () {
-      var adv; try { adv = JSON.parse($('#rep-json').value); } catch (x) { return toast('JSON cấu hình báo cáo không hợp lệ', true); }
-      var rep = Object.assign({}, adv, { chatId: $('#tg-chat').value.trim(), hour: Number($('#tg-hour').value), enabled: $('#tg-on').checked });
-      call('saveReport', { report: rep }).then(function (d) { S.rep = d; toast('Đã lưu cấu hình báo cáo'); rerender(); });
-    },
+    pickChat: function () { $('#tg-chat').value = el.dataset.id; A.saveReport(true); },
+    saveReport: function (quiet) { return saveReportForm(quiet === true); },
     previewReport: function () { el.innerHTML = '<span class="spinner"></span> Đang tính…'; call('previewReport', {}).then(function (r) { S.repPreview = r.text; rerender(); }).catch(rerender); },
-    sendReportNow: function () { if (!confirm('Gửi báo cáo ngày hôm qua vào nhóm Telegram?')) return; el.innerHTML = '<span class="spinner"></span>';
-      call('sendReportNow', {}).then(function (r) { S.repPreview = r.text; toast('Đã gửi vào Telegram'); rerender(); }).catch(rerender); },
+    sendReportNow: function () {
+      if (!$('#tg-chat').value.trim()) return toast('Chọn nhóm nhận báo cáo trước (bấm Tìm nhóm rồi bấm vào tên nhóm).', true);
+      if (!confirm('Gửi báo cáo ngày hôm qua vào nhóm Telegram?')) return; el.innerHTML = '<span class="spinner"></span>';
+      saveReportForm(true).then(function () { return call('sendReportNow', {}); })
+        .then(function (r) { S.repPreview = r.text; toast('Đã gửi vào Telegram'); rerender(); }).catch(rerender); },
     addIndustry: function () { S.settings.industries.push({ name: '', target: 120000 }); rerender(); },
     saveSettings: function () {
       try { var adv = JSON.parse($('#adv-json').value); Object.assign(S.settings, adv); } catch (err) { return toast('JSON nâng cao không hợp lệ', true); }
@@ -649,6 +648,17 @@ function saveQueued() {
     });
   });
   return S.pending;
+}
+
+/** Reads the Telegram report form, saves it, keeps the screen in sync. */
+function saveReportForm(quiet) {
+  var adv;
+  try { adv = JSON.parse($('#rep-json').value); } catch (x) { toast('JSON cấu hình báo cáo không hợp lệ', true); return Promise.reject(x); }
+  var rep = Object.assign({}, adv, { chatId: $('#tg-chat').value.trim(), hour: Number($('#tg-hour').value), enabled: $('#tg-on').checked });
+  return call('saveReport', { report: rep }).then(function (d) {
+    S.rep = d; toast(quiet ? 'Đã chọn nhóm và lưu' : 'Đã lưu cấu hình báo cáo');
+    var y = window.scrollY; render(); window.scrollTo(0, y); return d;
+  });
 }
 
 function setAll(v) {

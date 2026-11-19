@@ -119,7 +119,7 @@ function buildRecs_(p) {
         add('SCALE', 'Chi phí/SĐT ' + money_(cpl) + ' = ' + Math.round(cpl / T * 100) + '% mục tiêu, có SĐT ' + stable + '/7 ngày' + (bookTarget ? ', chi phí/Book ' + money_(cpb14) + ' ≤ mục tiêu ' + money_(bookTarget) : '') + '.');
       if (!acts.length) add(isLead && (!a.spend || (!a.leads && a.spend < (R.pauseZeroLeadX * T || 1))) ? 'WAIT' : 'KEEP',
         !isLead ? 'Camp không tối ưu theo lead, app chỉ theo dõi tần suất và CTR.' : !T ? 'Chưa có mục tiêu chi phí/SĐT cho ngành của camp này.' :
-        a.leads ? 'Chi phí/SĐT ' + money_(cpl) + ' trong khoảng mục tiêu ' + money_(T) + '.' : 'Mới chi ' + money_(a.spend) + ', chưa đủ để kết luận.');
+        a.leads ? (cpl > T ? 'Chi phí/SĐT ' + money_(cpl) + ' cao hơn mục tiêu ' + money_(T) + ' ' + Math.round((cpl / T - 1) * 100) + '%, chưa tới ngưỡng giảm ' + R.cutCplPct + '%' + (cplPrev ? ' (tuần trước ' + money_(cplPrev) + ')' : '') + '. Theo dõi tiếp.' : 'Chi phí/SĐT ' + money_(cpl) + ' đạt mục tiêu ' + money_(T) + '.') : 'Mới chi ' + money_(a.spend) + ', chưa đủ để kết luận.');
       acts.sort(function (x, y) { return REC_ACTIONS[x.code].rank - REC_ACTIONS[y.code].rank; });
 
       var main = acts[0].code, newBudget = null;

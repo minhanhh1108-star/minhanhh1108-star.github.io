@@ -141,6 +141,8 @@ function syncLive() {
                       regionKeys: regionKeys, regionNames: (geo.regions || []).map(function (x) { return x.name; }),
                       audienceIds: (t.custom_audiences || []).map(function (a) { return a.id; }),
                       excludeIds: (t.excluded_custom_audiences || []).map(function (a) { return a.id; }),
+                      interests: [].concat.apply([], (t.flexible_spec || []).map(function (f) { return (f.interests || []).map(function (x) { return { id: String(x.id), name: x.name }; }); })),
+                      behaviors: [].concat.apply([], (t.flexible_spec || []).map(function (f) { return (f.behaviors || []).map(function (x) { return { id: String(x.id), name: x.name }; }); })),
                       advantage: !!((t.targeting_automation || {}).advantage_audience),
                       geoExpand: !!(((t.targeting_automation || {}).individual_setting || {}).geo),
                       schedule: g.adset_schedule || [], ads: [], spend: 0, leads: 0 };
@@ -213,6 +215,7 @@ function cloneLive_(user, p) {
     var key = 'g' + (i + 1);
     order.adsets.push({ key: key, name: g.name, audiences: codes(g.audienceIds), excludes: codes(g.excludeIds), audNote: '', excNote: '',
                         ageMin: g.ageMin, ageMax: g.ageMax, gender: g.gender, regions: g.regionKeys, regionNote: '',
+                        interests: g.interests || [], behaviors: g.behaviors || [], detailNote: '',
                         advantage: g.advantage, geoExpand: g.geoExpand, dailyBudget: cp.dailyBudget ? '' : g.dailyBudget,
                         start: tomorrow8_(), end: '', slots: [], days: [], slotNote: '' });
     g.ads.forEach(function (a) {
@@ -234,4 +237,26 @@ function cloneLive_(user, p) {
 
 function tomorrow8_() {
   return Utilities.formatDate(new Date(Date.now() + 86400000), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd') + 'T08:00';
+}
+
+/* =========================== Detailed targeting =========================== */
+
+function searchInterests_(q) {
+  q = String(q || '').trim();
+  if (q.length < 2) return [];
+  return (gget('search', { type: 'adinterest', q: q, limit: 30, locale: 'vi_VN' }).data || []).map(function (x) {
+    return { id: String(x.id), name: x.name, path: x.path || [], size: x.audience_size_lower_bound || 0 };
+  });
+}
+
+/** All Meta behaviors (≈300), cached 6 hours. */
+function listBehaviors_() {
+  var cache = CacheService.getScriptCache();
+  var hit = cache.get('behaviors_vi');
+  if (hit) return JSON.parse(hit);
+  var list = (gget('search', { type: 'adTargetingCategory', class: 'behaviors', locale: 'vi_VN' }).data || []).map(function (x) {
+    return { id: String(x.id), name: x.name, path: x.path || [], size: x.audience_size_lower_bound || 0 };
+  }).sort(function (a, b) { return (a.path || []).join('/').localeCompare((b.path || []).join('/')); });
+  try { cache.put('behaviors_vi', JSON.stringify(list), 21600); } catch (e) { /* too large for cache: fine */ }
+  return list;
 }

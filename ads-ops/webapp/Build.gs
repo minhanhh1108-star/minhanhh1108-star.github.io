@@ -232,6 +232,10 @@ function adsetBody_(o, g, acc, s, lifetime) {
   if (g.gender === 'female') targeting.genders = [2];
   var inc = ids(g.audiences), exc = ids(g.excludes);
   if (inc.length) targeting.custom_audiences = inc;
+  var flex = {};
+  if ((g.interests || []).length) flex.interests = g.interests.map(function (x) { return { id: String(x.id), name: x.name }; });
+  if ((g.behaviors || []).length) flex.behaviors = g.behaviors.map(function (x) { return { id: String(x.id), name: x.name }; });
+  if (flex.interests || flex.behaviors) targeting.flexible_spec = [flex];
   if (exc.length) targeting.excluded_custom_audiences = exc;
   var body = {
     name: g.name, campaign_id: o.meta.campaignId, status: 'PAUSED',

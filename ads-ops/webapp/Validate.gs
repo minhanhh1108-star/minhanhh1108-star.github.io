@@ -49,7 +49,6 @@ function validateOrder(order, ctx) {
   // ---------- campaign
   if (!c.name) err('Chiến dịch', 'thiếu tên');
   if (!acc) err('Chiến dịch', 'chưa chọn tài khoản');
-  if (!c.industry) err('Chiến dịch', 'chưa chọn ngành');
   if (!c.budgetMode) err('Chiến dịch', 'chưa chọn nơi đặt ngân sách');
   if (c.budgetMode === 'campaign' && !(Number(c.dailyBudget) > 0)) err('Chiến dịch', 'thiếu ngân sách chiến dịch');
   var named = (order.adsets || []).filter(function (g) { return g.name; });
@@ -87,7 +86,9 @@ function validateOrder(order, ctx) {
   named.forEach(function (g, i) {
     var sc = 'Nhóm "' + g.name + '"';
     var auds = (g.audiences || []);
-    if (!auds.length) warn(sc, 'không chọn tệp đối tượng = nhắm rộng');
+    var detail = (g.interests || []).length + (g.behaviors || []).length;
+    if (!auds.length && !detail) warn(sc, 'không chọn tệp đối tượng hay sở thích/hành vi = nhắm rộng');
+    if (auds.length && detail) warn(sc, 'có cả tệp đối tượng và sở thích/hành vi: Meta chỉ nhắm phần giao nhau, tệp sẽ hẹp');
     auds.concat(g.excludes || []).forEach(function (code) {
       var a = audByCode[code];
       if (!a) { err(sc, 'tệp ' + code + ' không có trong thư viện'); return; }

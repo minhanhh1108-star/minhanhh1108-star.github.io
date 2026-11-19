@@ -153,18 +153,16 @@ function viewOrders() {
 }
 
 /* ================= Editor ================= */
-var DAYS = [[1, 'T2'], [2, 'T3'], [3, 'T4'], [4, 'T5'], [5, 'T6'], [6, 'T7'], [0, 'CN']];
-var SLOTS = [[0, 8], [8, 12], [12, 14], [14, 18], [18, 22], [22, 24]];
 
 function blankOrder() {
   var d = S.settings.defaults, a0 = S.settings.accounts[0];
-  return { id: '', status: 'Nháp', campaign: { name: '', account: a0 ? a0.id : '', industry: '', region: '3984', budgetMode: 'campaign', dailyBudget: '', testVar: '', note: '' },
+  return { id: '', status: 'Nháp', campaign: { name: '', account: a0 ? a0.id : '', region: '3984', budgetMode: 'campaign', dailyBudget: '', testVar: '', note: '' },
            adsets: [newAdset(1)], ads: [newAd(1)] };
 }
 function newAdset(n) {
   var d = S.settings.defaults;
   return { key: 'g' + Date.now().toString(36) + n, name: '', audiences: [], excludes: [], audNote: '', excNote: '', ageMin: d.ageMin, ageMax: d.ageMax,
-           gender: 'all', regions: [], regionNote: '', advantage: false, geoExpand: false, dailyBudget: '', start: '', end: '', slots: [], days: [], slotNote: '' };
+           gender: 'all', regions: [], regionNote: '', interests: [], behaviors: [], detailNote: '', advantage: false, geoExpand: false, dailyBudget: '', start: '', end: '', slots: [], days: [], slotNote: '' };
 }
 function newAd(n) {
   return { key: 'a' + Date.now().toString(36) + n, name: '', runIn: ['all'], source: 'drive', driveUrl: '', thumbUrl: '', postId: '', message: '', title: '', formId: '', note: '' };
@@ -198,13 +196,11 @@ function card(key, cls, title, summary, body, defaultOpen) {
 
 function sectionCampaign(o, L) {
   var c = o.campaign, a = acc(c.account);
-  var sum = [c.name || '(chưa đặt tên)', a ? a.name : '', c.industry, regionName(c.region),
+  var sum = [c.name || '(chưa đặt tên)', a ? a.name : '', regionName(c.region),
              c.budgetMode === 'campaign' ? money(c.dailyBudget) + 'đ/ngày cấp chiến dịch' : 'ngân sách theo nhóm', c.testVar ? 'test ' + c.testVar : ''].filter(Boolean).join(' · ');
   var b = '<div class="row"><div class="fld"><label>Tên chiến dịch *</label><input type="text" data-bind="campaign.name" value="' + esc(c.name) + '"' + dis(L) + ' placeholder="Video | Spa | Mới | HCM | 600k | 20.11"></div></div>';
   b += '<div class="row"><div class="fld"><span class="lbl">Tài khoản *</span><div class="chips">' + S.settings.accounts.map(function (x) {
     return chip('campaign.account', x.id, x.name + ' · ' + x.pageName, c.account === x.id, 'radio', L, ' data-rerender="1"'); }).join('') + '</div></div></div>';
-  b += '<div class="row"><div class="fld"><span class="lbl">Ngành *</span><div class="chips">' + S.settings.industries.map(function (x) {
-    return chip('campaign.industry', x.name, x.name + ' (' + Math.round(x.target / 1000) + 'k)', c.industry === x.name, 'radio', L); }).join('') + '</div></div></div>';
   b += '<div class="row"><div class="fld"><span class="lbl">Khu vực mặc định cho các nhóm *</span><div class="chips">' + S.settings.regions.map(function (x) {
     return chip('campaign.region', x.key, x.name, String(c.region) === String(x.key), 'radio', L); }).join('') + '</div></div></div>';
   b += '<div class="row"><div class="fld"><span class="lbl">Ngân sách đặt ở *</span><div class="chips">' +
@@ -233,6 +229,32 @@ function audList(path, selected, account, kindFilter, L, searchKey) {
     }).join('') : '<div class="li muted">Không có tệp phù hợp (tệp của tài khoản ' + esc(pref) + ').</div>') + '</div>';
 }
 
+/** Detailed targeting: interests (search Meta) + behaviors (Meta list). Selected items are combined with OR. */
+function detailTargeting(g, i, L) {
+  g.interests = g.interests || []; g.behaviors = g.behaviors || [];
+  var kq = 'ti_' + g.key, res = S.open['tres_' + g.key] || [], bq = (S.open['tb_' + g.key] || '').toLowerCase();
+  var picked = g.interests.map(function (x) { return ['interests', x]; }).concat(g.behaviors.map(function (x) { return ['behaviors', x]; }));
+  var size = function (n) { return n ? (n >= 1e6 ? (n / 1e6).toFixed(1) + ' tr' : Math.round(n / 1e3) + 'k') + ' người' : ''; };
+  var item = function (kind, x) {
+    var on = g[kind].some(function (y) { return y.id === x.id; });
+    return '<label class="li' + (on ? ' on' : '') + '"><input type="checkbox" data-act="pickDetail" data-i="' + i + '" data-kind="' + kind + '" data-id="' + esc(x.id) +
+      '" data-name="' + esc(x.name) + '"' + (on ? ' checked' : '') + dis(L) + '><div><div class="code">' + esc(x.name) + ' <span class="badge b-gray">' + size(x.size) +
+      '</span></div><div class="desc">' + esc((x.path || []).slice(0, -1).join(' › ')) + '</div></div></label>';
+  };
+  var beh = (S.behaviors || []).filter(function (x) { return !bq || (x.name + ' ' + (x.path || []).join(' ')).toLowerCase().indexOf(bq) >= 0; }).slice(0, 80);
+  return '<div style="margin-top:14px"><span class="lbl">Nhắm mục tiêu chi tiết: sở thích và hành vi (chọn nhiều)</span>' +
+    '<div class="muted">Người xem cần có ÍT NHẤT MỘT sở thích/hành vi đã chọn. Nếu nhóm có cả tệp đối tượng, Meta chỉ nhắm phần GIAO nhau (tệp hẹp hơn).</div>' +
+    (picked.length ? '<div class="chips" style="margin:8px 0">' + picked.map(function (pk) {
+      return '<span class="chip on">' + (pk[0] === 'interests' ? '♥ ' : '◆ ') + esc(pk[1].name) + (L ? '' : ' <a data-act="unpickDetail" data-i="' + i + '" data-kind="' + pk[0] + '" data-id="' + esc(pk[1].id) + '" style="cursor:pointer;color:var(--badT)">✕</a>') + '</span>'; }).join('') + '</div>' : '') +
+    (L ? '' : '<div class="grid2" style="margin-top:8px"><div><div class="bar"><input type="text" placeholder="Tìm sở thích, vd: mỹ phẩm, spa, kinh doanh online…" data-tq="' + kq + '" value="' + esc(S.open[kq] || '') +
+      '"><button class="btn sm" data-act="searchInterest" data-i="' + i + '">Tìm</button></div><div class="list" style="margin-top:6px">' +
+      (res.length ? res.map(function (x) { return item('interests', x); }).join('') : '<div class="li muted">Gõ từ khóa rồi bấm Tìm.</div>') + '</div></div>' +
+      '<div><input type="text" placeholder="Lọc hành vi, vd: doanh nghiệp, du lịch…" data-search="tb_' + g.key + '" value="' + esc(S.open['tb_' + g.key] || '') + '">' +
+      '<div class="list" style="margin-top:6px">' + (S.behaviors ? beh.map(function (x) { return item('behaviors', x); }).join('') :
+        '<div class="li"><button class="btn sm" data-act="loadBehaviors">Tải danh sách hành vi</button></div>') + '</div></div></div>') +
+    '<div class="note"><textarea placeholder="Ghi chú về sở thích/hành vi…" data-bind="adsets.' + i + '.detailNote"' + dis(L) + '>' + esc(g.detailNote || '') + '</textarea></div></div>';
+}
+
 function sectionAdsets(o, L) {
   var named = o.adsets.filter(function (g) { return g.name; });
   var b = '';
@@ -241,7 +263,7 @@ function sectionAdsets(o, L) {
     var regs = g.regions.length ? g.regions.map(regionName).join(', ') : regionName(o.campaign.region) + ' (mặc định)';
     var sum = [g.audiences.length + ' tệp', g.excludes.length ? 'loại trừ ' + g.excludes.length : '', g.ageMin + '–' + g.ageMax,
                g.gender === 'all' ? 'Tất cả' : g.gender === 'male' ? 'Nam' : 'Nữ', regs, g.start ? 'từ ' + g.start.replace('T', ' ') : 'chưa có giờ bắt đầu',
-               g.slots.length ? g.slots.length + ' khung giờ' : ''].filter(Boolean).join(' · ');
+               (g.interests || []).length + (g.behaviors || []).length ? ((g.interests || []).length + (g.behaviors || []).length) + ' sở thích/hành vi' : ''].filter(Boolean).join(' · ');
     var key = 'g_' + g.key;
     var open = S.open[key] !== undefined ? S.open[key] : true;
     var body = '<div class="row"><div class="fld"><label>Tên nhóm *</label><input type="text" data-bind="' + p + '.name" value="' + esc(g.name) + '"' + dis(L) + '></div></div>';
@@ -251,6 +273,7 @@ function sectionAdsets(o, L) {
       '<div><span class="lbl">Tệp loại trừ (chọn nhiều)</span>' +
       audList(p + '.excludes', g.excludes, o.campaign.account, function (x) { return x.type !== 'Tương tự'; }, L, 'q_exc_' + g.key) +
       '<div class="note"><textarea placeholder="Ghi chú về loại trừ…" data-bind="' + p + '.excNote"' + dis(L) + '>' + esc(g.excNote) + '</textarea></div></div></div>';
+    body += detailTargeting(g, i, L);
     body += '<div class="row"><div class="fld s"><label>Tuổi từ</label><input type="number" min="18" max="65" data-bind="' + p + '.ageMin" value="' + esc(g.ageMin) + '"' + dis(L) + '></div>' +
       '<div class="fld s"><label>Tuổi đến</label><input type="number" min="18" max="65" data-bind="' + p + '.ageMax" value="' + esc(g.ageMax) + '"' + dis(L) + '></div>' +
       '<div class="fld"><span class="lbl">Giới tính</span><div class="chips">' + [['all', 'Tất cả'], ['male', 'Nam'], ['female', 'Nữ']].map(function (x) {
@@ -264,13 +287,6 @@ function sectionAdsets(o, L) {
     body += '<div class="row">' + (o.campaign.budgetMode === 'adset' ? '<div class="fld s"><label>Ngân sách nhóm/ngày *</label><input type="number" step="10000" data-bind="' + p + '.dailyBudget" value="' + esc(g.dailyBudget) + '"' + dis(L) + '></div>' : '') +
       '<div class="fld"><label>Bắt đầu *</label><input type="datetime-local" data-bind="' + p + '.start" value="' + esc(g.start) + '"' + dis(L) + '></div>' +
       '<div class="fld"><label>Kết thúc</label><input type="datetime-local" data-bind="' + p + '.end" value="' + esc(g.end) + '"' + dis(L) + '></div></div>';
-    body += '<div class="row"><div class="fld"><span class="lbl">Khung giờ chạy (để trống = cả ngày; có khung giờ thì cần ngày kết thúc)</span><div class="chips">' +
-      SLOTS.map(function (sl) {
-        var v = sl[0] + '-' + sl[1], on = g.slots.some(function (x) { return x.from === sl[0] && x.to === sl[1]; });
-        return chip(p + '.slots', v, sl[0] + 'h–' + sl[1] + 'h', on, 'checkbox', L, ' data-slot="1"'); }).join('') + '</div>' +
-      (g.slots.length ? '<div class="chips" style="margin-top:6px">' + DAYS.map(function (d) {
-        return chip(p + '.days', d[0], d[1], g.days.indexOf(d[0]) >= 0, 'checkbox', L, ' data-num="1"'); }).join('') + '<span class="muted">(không chọn ngày = mọi ngày)</span></div>' : '') +
-      '<div class="note"><textarea placeholder="Ghi chú lịch chạy…" data-bind="' + p + '.slotNote"' + dis(L) + '>' + esc(g.slotNote) + '</textarea></div></div></div>';
     if (!L) body += '<div class="bar" style="margin-top:10px"><button class="btn sm" data-act="dupAdset" data-i="' + i + '">Nhân bản nhóm</button>' +
       (o.adsets.length > 1 ? '<button class="btn sm danger" data-act="delAdset" data-i="' + i + '">Xóa nhóm</button>' : '') + '</div>';
     b += '<div class="sub' + (open ? '' : ' collapsed') + '"><div class="hd card-hd" data-act="toggle" data-key="' + key + '" style="display:flex;gap:10px;cursor:pointer"><span class="caret">▼</span><b>Nhóm ' + (i + 1) + ': ' +
@@ -425,6 +441,7 @@ document.addEventListener('input', function (e) {
   if (el.dataset.search) { S.open[el.dataset.search] = el.value; var pos = el.selectionStart; render(); var n = document.querySelector('[data-search="' + el.dataset.search + '"]'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }
   if (el.dataset.libq !== undefined) { S.libFilter.q = el.value; var p2 = el.selectionStart; render(); var m = document.querySelector('[data-libq]'); m.focus(); m.setSelectionRange(p2, p2); }
   if (el.dataset.logf !== undefined) S.logFilter = el.value;
+  if (el.dataset.tq) S.open[el.dataset.tq] = el.value;
   if (el.dataset.set) { var v = el.type === 'number' ? Number(el.value) : el.value; setPath(S.settings, el.dataset.set, v); }
   if (el.dataset.setlist) S.settings[el.dataset.setlist] = el.value.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
 });
@@ -502,6 +519,24 @@ document.addEventListener('click', function (e) {
     reloadLog: function () { loadTab(); },
     syncLive: function () { el.innerHTML = '<span class="spinner"></span> Đang đồng bộ…'; el.disabled = true; call('syncLive').then(function (d) { S.live = d; toast('Đã đồng bộ'); render(); }).catch(rerender); },
     syncLib: function () { el.innerHTML = '<span class="spinner"></span> Đang đồng bộ…'; el.disabled = true; call('syncLibrary').then(function (d) { S.library = d; toast('Đã đồng bộ thư viện'); render(); }).catch(rerender); },
+    searchInterest: function () {
+      var g = S.order.adsets[+el.dataset.i], q = S.open['ti_' + g.key] || '';
+      if (q.trim().length < 2) return toast('Gõ ít nhất 2 ký tự', true);
+      el.innerHTML = '<span class="spinner"></span>';
+      call('searchInterests', { q: q }).then(function (r) { S.open['tres_' + g.key] = r; rerender(); }).catch(rerender);
+    },
+    loadBehaviors: function () { el.innerHTML = '<span class="spinner"></span> Đang tải…'; call('listBehaviors').then(function (r) { S.behaviors = r; rerender(); }).catch(rerender); },
+    pickDetail: function () {
+      e.preventDefault();
+      var g = S.order.adsets[+el.dataset.i], k = el.dataset.kind, id = el.dataset.id;
+      var ix = g[k].findIndex(function (x) { return x.id === id; });
+      if (ix >= 0) g[k].splice(ix, 1); else g[k].push({ id: id, name: el.dataset.name });
+      S.check = null; S.dirty = true; rerender();
+    },
+    unpickDetail: function () {
+      var g = S.order.adsets[+el.dataset.i], k = el.dataset.kind;
+      g[k] = g[k].filter(function (x) { return x.id !== el.dataset.id; }); S.check = null; S.dirty = true; rerender();
+    },
     addAdset: function () { S.order.adsets.push(newAdset(S.order.adsets.length + 1)); S.dirty = true; rerender(); },
     dupAdset: function () { var g = clone(S.order.adsets[+el.dataset.i]); g.key = newAdset(9).key; g.name = g.name + ' (bản sao)'; S.order.adsets.splice(+el.dataset.i + 1, 0, g); S.open['g_' + g.key] = true; S.dirty = true; rerender(); },
     delAdset: function () { if (!confirm('Xóa nhóm này?')) return; var k = S.order.adsets[+el.dataset.i].key; S.order.adsets.splice(+el.dataset.i, 1);
@@ -553,7 +588,10 @@ function setAll(v) {
   S.order.ads.forEach(function (x) { S.open['a_' + x.key] = v; });
 }
 
-document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.id === 'lg-pin') document.querySelector('[data-act="login"]').click(); });
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && e.target.id === 'lg-pin') document.querySelector('[data-act="login"]').click();
+  if (e.key === 'Enter' && e.target.dataset.tq) { e.preventDefault(); var btn = e.target.parentNode.querySelector('[data-act="searchInterest"]'); if (btn) btn.click(); }
+});
 window.addEventListener('beforeunload', function (e) { if (S.dirty) { e.preventDefault(); e.returnValue = ''; } });
 boot();
 </script>

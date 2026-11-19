@@ -79,6 +79,8 @@ function handlers_() { return {
   cloneLive:     { role: 'runner',   fn: cloneLive_ },
   syncLibrary:   { role: 'runner',   fn: function () { return syncLibrary(); } },
   listLog:       { role: 'content',  fn: function (u, p) { return listLog_(p.orderId); } },
+  searchInterests: { role: 'runner', fn: function (u, p) { return searchInterests_(p.q); } },
+  listBehaviors: { role: 'runner',   fn: function () { return listBehaviors_(); } },
   listUsers:     { role: 'admin',    fn: function () { return listUsers_(); } },
   saveUser:      { role: 'admin',    fn: saveUser_ },
   saveSettings:  { role: 'admin',    fn: saveSettings_ }

@@ -81,6 +81,10 @@ function handlers_() { return {
   pauseLive:     { role: 'approver', fn: pauseLive_ },
   listLive:      { role: 'content',  fn: function () { return listLive_(); } },
   chartData:     { role: 'content',  fn: function (u, p) { return chartData_(p); } },
+  recs:          { role: 'content',  fn: function (u, p) { return buildRecs_(p); } },
+  listDocs:      { role: 'content',  fn: function () { return listDocs_(); } },
+  getDoc:        { role: 'content',  fn: function (u, p) { return getDoc_(p); } },
+  recRulesDefault: { role: 'admin',  fn: function () { return defaultRecRules_(); } },
   syncLive:      { role: 'runner',   fn: function () { return syncLive(); } },
   syncOrders:    { role: 'runner',   fn: function () { return syncOrderStatuses(); } },
   cloneLive:     { role: 'runner',   fn: cloneLive_ },
@@ -95,8 +99,8 @@ function handlers_() { return {
   saveReport:    { role: 'admin',    fn: saveReport_ },
   setTelegramToken: { role: 'admin', fn: setTelegramToken_ },
   telegramChats: { role: 'admin',    fn: function () { return telegramChats_(); } },
-  previewReport: { role: 'runner',   fn: function (u, p) { return buildDailyReport(p.day); } },
-  sendReportNow: { role: 'admin',    fn: function (u, p) { var r = buildDailyReport(p.day); sendTelegramText_(r.text); logAction_(u.email, '', 'Gửi thử báo cáo Telegram', '', 'OK', 'Báo cáo ngày ' + Utilities.formatDate(new Date(r.day), 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy') + ''); return r; } }
+  previewReport: { role: 'runner',   fn: function (u, p) { return withRecs_(buildDailyReport(p.day)); } },
+  sendReportNow: { role: 'admin',    fn: function (u, p) { var r = withRecs_(buildDailyReport(p.day)); sendTelegramText_(r.text); logAction_(u.email, '', 'Gửi thử báo cáo Telegram', '', 'OK', 'Báo cáo ngày ' + Utilities.formatDate(new Date(r.day), 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy') + ''); return r; } }
 }; }
 
 /* =========================== Setup =========================== */
@@ -188,7 +192,7 @@ function defaultSettings_() {
               audienceMaxDays: 90, primaryTextChars: 125, frequencyWarn: 2.5 },
     defaults: { ageMin: 23, ageMax: 55, gender: 'all', cta: 'SIGN_UP', attributionDays: 1, defaultFormByPage: {} },
     approvers: [],
-    monthBudgets: {}, bookTargets: {},
+    monthBudgets: {}, bookTargets: {}, recRules: {}, recTelegram: false, docsFolderId: '',
     notifyEmails: [],
     dashboards: []
   };

@@ -13,7 +13,7 @@ API = "https://script.googleapis.com/v1"
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "webapp")
 FILES = [("appsscript", "JSON", "appsscript.json"), ("Code", "SERVER_JS", "Code.gs"), ("Meta", "SERVER_JS", "Meta.gs"),
-         ("Validate", "SERVER_JS", "Validate.gs"), ("Sync", "SERVER_JS", "Sync.gs"), ("Build", "SERVER_JS", "Build.gs"), ("Report", "SERVER_JS", "Report.gs"), ("QC", "SERVER_JS", "QC.gs"), ("Charts", "SERVER_JS", "Charts.gs"),
+         ("Validate", "SERVER_JS", "Validate.gs"), ("Sync", "SERVER_JS", "Sync.gs"), ("Build", "SERVER_JS", "Build.gs"), ("Report", "SERVER_JS", "Report.gs"), ("QC", "SERVER_JS", "QC.gs"), ("Charts", "SERVER_JS", "Charts.gs"), ("Recs", "SERVER_JS", "Recs.gs"), ("Docs", "SERVER_JS", "Docs.gs"),
          ("Index", "HTML", "Index.html"), ("Styles", "HTML", "Styles.html"), ("App", "HTML", "App.html"), ("Setup", "HTML", "Setup.html")]
 
 

@@ -204,8 +204,8 @@ function sendDailyReport() {
   if (!cfg.enabled) return;
   try {
     var r = buildDailyReport();
-    sendTelegramText_(r.text);
-    logAction_('Hệ thống', '', 'Gửi báo cáo Telegram', r.day, 'OK', '');
+    sendTelegramText_(withRecs_(r).text);
+    logAction_('Hệ thống', '', 'Gửi báo cáo Telegram', '', 'OK', 'Báo cáo ngày ' + r.day);
   } catch (e) {
     logAction_('Hệ thống', '', 'Gửi báo cáo Telegram', '', 'Lỗi', e.message);
     try { sendTelegramText_('⚠ Không tạo được báo cáo ngày: ' + e.message); } catch (x) { /* ignore */ }

@@ -95,7 +95,7 @@ function handlers_() { return {
   setTelegramToken: { role: 'admin', fn: setTelegramToken_ },
   telegramChats: { role: 'admin',    fn: function () { return telegramChats_(); } },
   previewReport: { role: 'runner',   fn: function (u, p) { return buildDailyReport(p.day); } },
-  sendReportNow: { role: 'admin',    fn: function (u, p) { var r = buildDailyReport(p.day); sendTelegramText_(r.text); logAction_(u.email, '', 'Gửi thử báo cáo Telegram', r.day, 'OK', ''); return r; } }
+  sendReportNow: { role: 'admin',    fn: function (u, p) { var r = buildDailyReport(p.day); sendTelegramText_(r.text); logAction_(u.email, '', 'Gửi thử báo cáo Telegram', '', 'OK', 'Báo cáo ngày ' + Utilities.formatDate(new Date(r.day), 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy') + ''); return r; } }
 }; }
 
 /* =========================== Setup =========================== */

@@ -5,6 +5,7 @@ var S = { token: localStorage.getItem('lc_token') || '', user: null, settings: n
           libFilter: { acc: '', q: '' }, logFilter: '' };
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function moneyVal(n) { return n === '' || n == null ? '' : money(n) + 'đ'; }
 function money(n) { n = Math.round(Number(n) || 0); return n.toLocaleString('vi-VN'); }
 function $(sel) { return document.querySelector(sel); }
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -73,10 +74,10 @@ function render() {
   var app = $('#app');
   if (!S.user) { app.innerHTML = viewLogin(); return; }
   var qcWait = S.canQc ? S.orders.filter(function (o) { return o.status === 'Chờ QC'; }).length : 0;
-  var groups = [['Vận Hành', [['edit', S.order && S.order.id ? 'Sửa Camp' : '+ Lên Camp'], ['orders', 'Camp AI Lên', qcWait], ['live', 'Camp Đang Chạy']]],
+  var groups = [['Vận Hành', [['edit', S.order && S.order.id ? 'Sửa Camp' : 'Lên Camp'], ['orders', 'Camp AI Lên', qcWait], ['live', 'Camp Đang Chạy']]],
                 ['Phân Tích', [['dash', 'Báo Cáo'], ['library', 'Tệp & Form'], ['log', 'Lịch Sử']]]];
   if (role('admin')) groups.push(['Quản Trị', [['users', 'Team'], ['settings', 'Cài Đặt']]]);
-  var nm = S.user.name || S.user.email;
+  var nm = S.user.name && S.user.name !== S.user.roleLabel ? S.user.name : S.user.email;
   var html = '<div class="shell"><aside class="side"><div class="brand"><span class="logo">⚡</span><span>AI Agent Ads<small>Bot Bán Hàng · Meta Ads</small></span></div><nav class="menu">' +
     groups.map(function (g) {
       return '<div class="grp">' + g[0] + '</div>' + g[1].map(function (t) {
@@ -334,7 +335,7 @@ function sectionCampaign(o, L) {
   b += '<div class="row"><div class="fld"><span class="lbl">Ngân sách đặt ở *</span><div class="chips">' +
     chip('campaign.budgetMode', 'campaign', 'Chiến dịch (Meta tự chia cho các nhóm)', c.budgetMode === 'campaign', 'radio', L, ' data-rerender="1"') +
     chip('campaign.budgetMode', 'adset', 'Từng nhóm', c.budgetMode === 'adset', 'radio', L, ' data-rerender="1"') + '</div></div>' +
-    (c.budgetMode === 'campaign' ? '<div class="fld s"><label>Ngân sách/ngày (đ)</label><input type="number" step="10000" data-bind="campaign.dailyBudget" value="' + esc(c.dailyBudget) + '"' + dis(L) + '></div>' : '') + '</div>';
+    (c.budgetMode === 'campaign' ? '<div class="fld s"><label>Ngân sách/ngày</label><input type="text" inputmode="numeric" data-money data-bind="campaign.dailyBudget" value="' + moneyVal(c.dailyBudget) + '"' + dis(L) + '></div>' : '') + '</div>';
   b += '<div class="row"><div class="fld"><span class="lbl">Biến thử nghiệm</span><div class="chips">' +
     ['Tệp đối tượng', 'Creative', 'Khu vực', 'Ưu đãi', 'Ngân sách', 'Biểu mẫu', 'Nhân bản', 'Không'].map(function (x) {
       return chip('campaign.testVar', x, x, c.testVar === x, 'radio', L); }).join('') + '</div></div></div>';
@@ -412,7 +413,7 @@ function sectionAdsets(o, L) {
     body += '<div class="row"><div class="fld"><span class="lbl">Địa điểm (để trống = khu vực mặc định: ' + esc(regionName(o.campaign.region)) + ')</span><div class="chips">' +
       S.settings.regions.map(function (x) { return chip(p + '.regions', x.key, x.name, g.regions.indexOf(String(x.key)) >= 0, 'checkbox', L); }).join('') +
       '</div><div class="note"><textarea placeholder="Ghi chú địa điểm…" data-bind="' + p + '.regionNote"' + dis(L) + '>' + esc(g.regionNote) + '</textarea></div></div></div>';
-    body += '<div class="row">' + (o.campaign.budgetMode === 'adset' ? '<div class="fld s"><label>Ngân sách nhóm/ngày *</label><input type="number" step="10000" data-bind="' + p + '.dailyBudget" value="' + esc(g.dailyBudget) + '"' + dis(L) + '></div>' : '') +
+    body += '<div class="row">' + (o.campaign.budgetMode === 'adset' ? '<div class="fld s"><label>Ngân sách nhóm/ngày *</label><input type="text" inputmode="numeric" data-money data-bind="' + p + '.dailyBudget" value="' + moneyVal(g.dailyBudget) + '"' + dis(L) + '></div>' : '') +
       '<div class="fld"><label>Bắt đầu *</label><input type="datetime-local" data-bind="' + p + '.start" value="' + esc(g.start) + '"' + dis(L) + '></div>' +
       '<div class="fld"><label>Kết thúc</label><input type="datetime-local" data-bind="' + p + '.end" value="' + esc(g.end) + '"' + dis(L) + '></div></div>';
     if (!L) body += '<div class="bar" style="margin-top:10px"><button class="btn sm" data-act="dupAdset" data-i="' + i + '">Nhân bản nhóm</button>' +
@@ -511,12 +512,23 @@ function viewLibrary() {
   return h;
 }
 
+/** "2026-11-19 14:40" or ISO → "19/11 14:40" (dateOnly: "18/11/2026"). */
+function fmtTime(t, dateOnly) {
+  var str = String(t || ''), d;
+  if (/T.*Z$/.test(str)) { d = new Date(str); if (!isNaN(d)) str = d.toLocaleString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }); }
+  var m = str.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/) || str.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return str;
+  return dateOnly ? m[3] + '/' + m[2] + '/' + m[1] : m[3] + '/' + m[2] + (m[4] ? ' ' + m[4] + ':' + m[5] : '');
+}
+
 function viewLog() {
   var h = pageHead('Lịch Sử', 'Mọi thao tác: ai làm, lúc nào, ID trên Meta, kết quả.') +
     '<div class="filters"><input type="text" placeholder="Lọc theo mã camp, vd DH-20261119-001" data-logf value="' + esc(S.logFilter) + '" style="max-width:320px"><button class="btn" data-act="reloadLog">Lọc</button>' +
     (S.logFilter ? '<button class="btn ghost" data-act="clearLog">Bỏ lọc</button>' : '') + '</div>';
   return h + '<div class="tbl"><table><tr><th>Thời gian</th><th>Người</th><th>Camp</th><th>Hành động</th><th>ID Meta</th><th>Kết quả</th><th>Chi tiết</th></tr>' + S.log.map(function (l) {
-    return '<tr><td>' + esc(l.time) + '</td><td>' + esc(l.user) + '</td><td>' + esc(l.orderId) + '</td><td>' + esc(l.action) + '</td><td>' + esc(l.objectId) + '</td><td>' +
+    var oid = /^\d{4}-\d{2}-\d{2}T/.test(String(l.objectId)) ? 'Ngày ' + fmtTime(l.objectId, true) : l.objectId;
+    return '<tr><td class="nw">' + esc(fmtTime(l.time)) + '</td><td class="nw" title="' + esc(l.user) + '">' + esc(String(l.user).split('@')[0]) + '</td><td class="nw">' + esc(l.orderId) +
+      '</td><td style="min-width:200px">' + esc(l.action) + '</td><td class="nw muted">' + esc(oid) + '</td><td>' +
       (l.result === 'OK' ? '<span class="badge b-ok">OK</span>' : '<span class="badge b-bad">' + esc(l.result) + '</span>') + '</td><td class="muted">' + esc(l.detail) + '</td></tr>'; }).join('') + '</table></div>';
 }
 
@@ -582,15 +594,16 @@ function viewReportSettings() {
 
 function viewSettings() {
   var s = S.settings, L = s.limits;
-  var num = function (k, label) { return '<div class="fld s" style="flex:0 0 200px"><label>' + label + '</label><input type="number" data-set="limits.' + k + '" value="' + esc(L[k]) + '"></div>'; };
+  var num = function (k, label, isMoney) { return '<div class="fld s" style="flex:0 0 200px"><label>' + label + '</label>' + (isMoney ?
+    '<input type="text" inputmode="numeric" data-money data-set="limits.' + k + '" value="' + moneyVal(L[k]) + '">' : '<input type="number" data-set="limits.' + k + '" value="' + esc(L[k]) + '">') + '</div>'; };
   var T = S.setTab || 'general', tab = function (k) { return '<div class="stab' + (T === k ? ' on' : '') + '" data-s="' + k + '">'; };
   var h = pageHead('Cài Đặt', 'Thay đổi chỉ có hiệu lực sau khi bấm "Lưu cài đặt".', '<button class="btn p" data-act="saveSettings">Lưu cài đặt</button>') +
     '<div class="filters">' + seg('set', [['general', 'Chung'], ['report', 'Báo cáo Telegram'], ['qc', 'QC nội dung'], ['adv', 'Nâng cao']], T) + '</div>' + tab('general') +
     '<div class="card"><div class="hd"><span class="ttl">Giới hạn an toàn</span></div><div class="bd"><div class="row">' +
-    num('minDaily', 'Ngân sách tối thiểu/ngày') + num('maxDailyPerCampaign', 'Tối đa/chiến dịch/ngày') + num('maxNewPerDay', 'Tổng camp mới/ngày') +
-    num('singleAdsetBelow', 'Dưới mức này chỉ nên 1 nhóm') + num('audienceMaxDays', 'Tuổi tệp tối đa (ngày)') + num('primaryTextChars', 'Ký tự nội dung hiển thị') + '</div></div></div>';
+    num('minDaily', 'Ngân sách tối thiểu/ngày', 1) + num('maxDailyPerCampaign', 'Tối đa/chiến dịch/ngày', 1) + num('maxNewPerDay', 'Tổng ngân sách camp mới/ngày', 1) +
+    num('singleAdsetBelow', 'Dưới mức này chỉ nên 1 nhóm', 1) + num('audienceMaxDays', 'Tuổi tệp tối đa (ngày)') + num('primaryTextChars', 'Ký tự nội dung hiển thị') + '</div></div></div>';
   h += '<div class="card"><div class="hd"><span class="ttl">Ngành và mục tiêu chi phí/lead</span></div><div class="bd">' + s.industries.map(function (x, i) {
-    return '<div class="row" style="margin-top:6px"><div class="fld"><input type="text" data-set="industries.' + i + '.name" value="' + esc(x.name) + '"></div><div class="fld s"><input type="number" data-set="industries.' + i + '.target" value="' + esc(x.target) + '"></div></div>'; }).join('') +
+    return '<div class="row" style="margin-top:6px"><div class="fld"><input type="text" data-set="industries.' + i + '.name" value="' + esc(x.name) + '"></div><div class="fld s"><input type="text" inputmode="numeric" data-money data-set="industries.' + i + '.target" value="' + moneyVal(x.target) + '"></div></div>'; }).join('') +
     '<button class="btn sm" data-act="addIndustry" style="margin-top:8px">+ Thêm ngành</button></div></div>';
   s.dashboards = s.dashboards || [];
   h += '<div class="card"><div class="hd"><span class="ttl">Dashboard (link Looker Studio)</span></div><div class="bd">' + s.dashboards.map(function (x, i) {
@@ -619,10 +632,20 @@ function setPath(obj, path, val) {
 }
 function numIf(path, v) { return /\.(ageMin|ageMax|dailyBudget)$/.test(path) ? (v === '' ? '' : Number(v)) : v; }
 
+function digits(v) { var d = String(v).replace(/\D/g, ''); return d === '' ? '' : Number(d); }
+/** Re-format a money field as the user types: 500000 → 500.000đ, keeping the caret before "đ". */
+function liveMoney(el) {
+  var n = digits(el.value), before = String(el.value).slice(0, el.selectionStart).replace(/\D/g, '').length;
+  el.value = moneyVal(n);
+  var pos = 0, seen = 0;
+  while (pos < el.value.length && seen < before) { if (/\d/.test(el.value[pos])) seen++; pos++; }
+  el.setSelectionRange(pos, pos);
+}
+
 document.addEventListener('input', function (e) {
   var el = e.target;
   if (el.dataset.bind && S.order) {
-    setPath(S.order, el.dataset.bind, numIf(el.dataset.bind, el.value)); S.check = null; S.qc = null; S.dirty = true;
+    setPath(S.order, el.dataset.bind, el.dataset.money !== undefined ? digits(el.value) : numIf(el.dataset.bind, el.value)); S.check = null; S.qc = null; S.dirty = true;
     if (el.dataset.counter) { var c = document.querySelector('[data-count="' + el.dataset.bind.replace(/\.message$/, '') + '"]'); if (c) c.textContent = el.value.length + ' ký tự'; }
   }
   if (el.dataset.search) { S.open[el.dataset.search] = el.value; var pos = el.selectionStart; render(); var n = document.querySelector('[data-search="' + el.dataset.search + '"]'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }
@@ -630,7 +653,8 @@ document.addEventListener('input', function (e) {
   if (el.dataset.libq !== undefined) { S.libFilter.q = el.value; var p2 = el.selectionStart; render(); var m = document.querySelector('[data-libq]'); m.focus(); m.setSelectionRange(p2, p2); }
   if (el.dataset.logf !== undefined) S.logFilter = el.value;
   if (el.dataset.tq) S.open[el.dataset.tq] = el.value;
-  if (el.dataset.set) { var v = el.type === 'number' ? Number(el.value) : el.value; setPath(S.settings, el.dataset.set, v); }
+  if (el.dataset.set) { var v = el.dataset.money !== undefined ? digits(el.value) : el.type === 'number' ? Number(el.value) : el.value; setPath(S.settings, el.dataset.set, v); }
+  if (el.dataset.money !== undefined) liveMoney(el);
   if (el.dataset.setlist) S.settings[el.dataset.setlist] = el.value.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
 });
 

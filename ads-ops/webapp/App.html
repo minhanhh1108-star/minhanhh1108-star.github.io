@@ -61,27 +61,55 @@ function loadTab() {
 function go(tab) { S.tab = tab; render(); loadTab(); }
 
 /* ================= Render root ================= */
+var ICONS = {
+  live: '<path d="M3 12h4l3-8 4 16 3-8h4"/>', orders: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/>',
+  edit: '<path d="M12 5v14M5 12h14"/>', dash: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', library: '<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 11a3 3 0 1 0 0-6M22 21c0-3-2-5-5-5"/>',
+  log: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>', users: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3.9V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'
+};
+function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + (ICONS[k] || '') + '</svg>'; }
+
 function render() {
   var app = $('#app');
   if (!S.user) { app.innerHTML = viewLogin(); return; }
-  var tabs = [['live', 'Camp Đang Chạy'], ['orders', 'Camp AI Lên'], ['edit', S.order && S.order.id ? 'Sửa Camp ' + S.order.id : '+ Lên Camp'],
-              ['dash', 'Báo Cáo'], ['library', 'Tệp & Form'], ['log', 'Lịch Sử']];
-  if (role('admin')) tabs.push(['users', 'Team'], ['settings', 'Cài Đặt']);
-  var html = '<header><h1>AI Agent Ads</h1><nav>' + tabs.map(function (t) {
-    return '<button data-act="tab" data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'active' : '') + '">' + esc(t[1]) + '</button>';
-  }).join('') + '</nav>' + (dashList()[0] ? '<a class="btn sm" href="' + esc(dashList()[0].url) + '" target="_blank" rel="noopener" style="background:#fff;color:var(--blue)">📊 Mở báo cáo</a>' : '') + '<div class="who">' + esc(S.user.name || S.user.email) + '<br><span>' + esc(S.user.roleLabel) +
-    '</span> · <a data-act="pin">Đổi PIN</a> · <a data-act="logout">Thoát</a></div></header><main>';
+  var qcWait = S.canQc ? S.orders.filter(function (o) { return o.status === 'Chờ QC'; }).length : 0;
+  var groups = [['Vận Hành', [['edit', S.order && S.order.id ? 'Sửa Camp' : '+ Lên Camp'], ['orders', 'Camp AI Lên', qcWait], ['live', 'Camp Đang Chạy']]],
+                ['Phân Tích', [['dash', 'Báo Cáo'], ['library', 'Tệp & Form'], ['log', 'Lịch Sử']]]];
+  if (role('admin')) groups.push(['Quản Trị', [['users', 'Team'], ['settings', 'Cài Đặt']]]);
+  var nm = S.user.name || S.user.email;
+  var html = '<div class="shell"><aside class="side"><div class="brand"><span class="logo">⚡</span><span>AI Agent Ads<small>Bot Bán Hàng · Meta Ads</small></span></div><nav class="menu">' +
+    groups.map(function (g) {
+      return '<div class="grp">' + g[0] + '</div>' + g[1].map(function (t) {
+        var cls = (S.tab === t[0] ? 'active' : '') + (t[0] === 'edit' && !(S.order && S.order.id) && S.tab !== 'edit' && role('runner') ? ' cta' : '');
+        if (t[0] === 'edit' && !role('runner') && !S.order) return '';
+        return '<button data-act="tab" data-tab="' + t[0] + '" class="' + cls + '">' + icon(t[0]) + '<span>' + esc(t[1]) + '</span>' + (t[2] ? '<span class="cnt" title="Camp chờ bạn duyệt QC">' + t[2] + '</span>' : '') + '</button>';
+      }).join('');
+    }).join('') + '</nav>' +
+    '<div class="who"><span class="ava">' + esc(String(nm).trim().charAt(0).toUpperCase()) + '</span><div><div class="nm">' + esc(nm) + '</div><div class="rl" style="color:#94a3b8">' + esc(S.user.roleLabel) + '</div>' +
+    '<div><a data-act="pin">Đổi PIN</a> · <a data-act="logout">Thoát</a></div></div></div></aside><main>';
   var v = { dash: viewDashboard, live: viewLive, orders: viewOrders, edit: viewEditor, library: viewLibrary, log: viewLog, users: viewUsers, settings: viewSettings }[S.tab];
   html += v ? v() : '';
-  app.innerHTML = html + '</main>';
+  app.innerHTML = html + '</main></div>';
+}
+
+/** Page header: title, optional subtitle and right-side actions. */
+function pageHead(title, subtitle, actions) {
+  return '<div class="ph"><div><h2>' + title + '</h2>' + (subtitle ? '<div class="sub2">' + subtitle + '</div>' : '') + '</div>' + (actions ? '<div class="bar right">' + actions + '</div>' : '') + '</div>';
+}
+function emptyState(title, text, action) { return '<div class="empty"><b>' + title + '</b>' + (text || '') + (action ? '<div style="margin-top:12px">' + action + '</div>' : '') + '</div>'; }
+function seg(name, items, cur) {
+  return '<div class="seg">' + items.map(function (it) {
+    return '<button data-act="seg" data-seg="' + name + '" data-v="' + esc(it[0]) + '" class="' + (String(cur) === String(it[0]) ? 'on' : '') + '">' + esc(it[1]) + (it[2] != null ? '<span class="c">' + it[2] + '</span>' : '') + '</button>';
+  }).join('') + '</div>';
 }
 
 function viewLogin() {
-  return '<div class="center"><div class="card login"><div class="bd" style="border:0;padding:22px">' +
-    '<h2>AI Agent Ads</h2><div class="fld"><label>Email</label><input type="email" id="lg-email" autocomplete="username"></div>' +
-    '<div class="fld" style="margin-top:10px"><label>Mã PIN</label><input type="password" id="lg-pin" inputmode="numeric" autocomplete="current-password"></div>' +
-    '<div style="margin-top:14px"><button class="btn p" data-act="login" style="width:100%">Đăng nhập</button></div>' +
-    '<p class="muted">Chưa có tài khoản? Nhờ quản trị viên thêm bạn ở tab Thành viên.</p></div></div></div>';
+  return '<div class="center"><div class="card login"><div class="bd" style="border:0;padding:28px">' +
+    '<div class="brand"><span class="logo" style="color:#fff">⚡</span><span>AI Agent Ads<small>Lên camp, QC và theo dõi Meta Ads cho team</small></span></div>' +
+    '<div class="fld" style="margin-top:18px"><label>Email</label><input type="email" id="lg-email" autocomplete="username" placeholder="ban@gmail.com"></div>' +
+    '<div class="fld" style="margin-top:12px"><label>Mã PIN</label><input type="password" id="lg-pin" inputmode="numeric" autocomplete="current-password" placeholder="••••••"></div>' +
+    '<div style="margin-top:18px"><button class="btn p" data-act="login" style="width:100%;padding:10px">Đăng nhập</button></div>' +
+    '<p class="muted" style="margin-top:14px">Chưa có tài khoản? Nhờ quản trị viên thêm bạn ở mục Team.</p></div></div></div>';
 }
 
 /* ================= Live ================= */
@@ -94,20 +122,37 @@ function viewLive() {
     return ind ? ind.target : null;
   };
   var upd = S.live[0] && S.live[0].updatedAt || '—';
-  var h = '<h2>Camp Đang Chạy <span class="muted">Số liệu 7 ngày · cập nhật ' + esc(upd) + '</span>' +
-    (role('runner') ? '<button class="btn sm right" data-act="syncLive">Đồng bộ từ Meta</button>' : '') + '</h2>';
-  if (!S.live.length) return h + '<p class="muted">Chưa có dữ liệu. Bấm "Đồng bộ từ Meta".</p>';
-  h += '<div class="tbl"><table class="tree"><tr><th>Chiến dịch ▸ nhóm • quảng cáo</th><th>Tài khoản</th><th class="n">Ngân sách/ngày</th><th class="n">Chi tiêu</th><th class="n">Lead</th><th class="n">Chi phí/lead</th><th class="n">Mục tiêu</th><th>Nhắm chọn</th><th></th></tr>';
-  S.live.forEach(function (c) {
+  var h = pageHead('Camp Đang Chạy', 'Số liệu 7 ngày gần nhất · cập nhật ' + esc(upd), role('runner') ? '<button class="btn" data-act="syncLive">↻ Đồng bộ từ Meta</button>' : '');
+  if (!S.live.length) return h + emptyState('Chưa có dữ liệu', 'Bấm "Đồng bộ từ Meta" để lấy danh sách camp đang chạy.');
+  var F = S.liveF || (S.liveF = { acc: '', over: '' });
+  var rows = S.live.map(function (c) {
+    var cpl = c.leads ? c.spend / c.leads : null, tg = c.objective === 'OUTCOME_LEADS' ? targetOf(c.name) : null;
+    return { c: c, cpl: cpl, tg: tg, over: c.objective === 'OUTCOME_LEADS' && c.spend > 0 && (cpl == null || (tg && cpl > tg)) };
+  });
+  var accs = []; S.live.forEach(function (c) { if (accs.indexOf(c.accountName) < 0) accs.push(c.accountName); });
+  var vis = rows.filter(function (r) { return (!F.acc || r.c.accountName === F.acc) && (!F.over || r.over); });
+  var sp = vis.reduce(function (s, r) { return s + r.c.spend; }, 0), ld = vis.reduce(function (s, r) { return s + r.c.leads; }, 0);
+  var bud = vis.reduce(function (s, r) { return s + (r.c.dailyBudget || r.c.adsets.reduce(function (t, g) { return t + g.dailyBudget; }, 0)); }, 0);
+  var nOver = vis.filter(function (r) { return r.over; }).length;
+  h += '<div class="kpis"><div class="kpi"><div class="k">Chi tiêu 7 ngày</div><div class="v">' + money(sp) + 'đ</div><div class="h">' + vis.length + ' camp</div></div>' +
+    '<div class="kpi"><div class="k">Ngân sách/ngày</div><div class="v">' + money(bud) + 'đ</div></div>' +
+    '<div class="kpi"><div class="k">Lead</div><div class="v">' + money(ld) + '</div></div>' +
+    '<div class="kpi"><div class="k">Chi phí/lead trung bình</div><div class="v">' + (ld ? money(sp / ld) + 'đ' : '—') + '</div></div>' +
+    '<div class="kpi"><div class="k">Camp vượt mục tiêu</div><div class="v ' + (nOver ? 'bad' : 'ok') + '">' + nOver + '</div><div class="h">chi phí/lead cao hơn mục tiêu ngành</div></div></div>';
+  h += '<div class="filters">' + seg('liveAcc', [['', 'Tất cả', rows.length]].concat(accs.map(function (a) { return [a, a, rows.filter(function (r) { return r.c.accountName === a; }).length]; })), F.acc) +
+    seg('liveOver', [['', 'Mọi camp'], ['1', '⚠ Chỉ camp vượt mục tiêu']], F.over) + '</div>';
+  if (!vis.length) return h + emptyState('Không có camp nào khớp bộ lọc', '');
+  h += '<div class="tbl"><table class="tree"><tr><th>Chiến dịch ▸ nhóm • quảng cáo</th><th>Tài khoản</th><th class="n">Ngân sách/ngày</th><th class="n">Chi tiêu</th><th class="n">Lead</th><th class="n">Chi phí/lead</th><th class="n">Mục tiêu</th><th>Chi tiết</th><th></th></tr>';
+  vis.map(function (r) { return r.c; }).forEach(function (c) {
     var cpl = c.leads ? c.spend / c.leads : null, tg = c.objective === 'OUTCOME_LEADS' ? targetOf(c.name) : null;
     var cls = cpl == null ? (c.spend > 0 && c.objective === 'OUTCOME_LEADS' ? 'b-bad' : 'b-gray') : (tg && cpl > tg ? 'b-bad' : 'b-ok');
     var open = S.open['live_' + c.id];
     var budget = c.dailyBudget || c.adsets.reduce(function (s, g) { return s + g.dailyBudget; }, 0);
-    h += '<tr class="lvl1"><td><a data-act="toggle" data-key="live_' + c.id + '" style="cursor:pointer">' + (open ? '▾ ' : '▸ ') + esc(c.name) + '</a></td><td>' + esc(c.accountName) +
+    h += '<tr class="lvl1"><td><a data-act="toggle" data-key="live_' + c.id + '" style="cursor:pointer">' + (open ? '▾ ' : '▸ ') + esc(c.name) + '</a></td><td class="nw">' + esc(c.accountName) +
       '</td><td class="n">' + money(budget) + '</td><td class="n">' + money(c.spend) + '</td><td class="n">' + c.leads + '</td><td class="n"><span class="badge ' + cls + '">' +
-      (cpl == null ? (c.objective === 'OUTCOME_LEADS' ? '0 lead' : 'Tương tác') : money(cpl)) + '</span></td><td class="n">' + (tg ? money(tg) : '') + '</td><td></td><td class="bar">' +
-      (role('runner') ? '<button class="btn sm" data-act="cloneLive" data-id="' + c.id + '">Nhân bản camp</button>' : '') +
-      (S.user.canActivate ? '<button class="btn sm danger" data-act="pauseLive" data-id="' + c.id + '" data-name="' + esc(c.name) + '">Tạm dừng</button>' : '') + '</td></tr>';
+      (cpl == null ? (c.objective === 'OUTCOME_LEADS' ? '0 lead' : 'Tương tác') : money(cpl)) + '</span></td><td class="n">' + (tg ? money(tg) : '') + '</td><td></td><td><div class="bar" style="flex-wrap:nowrap">' +
+      (role('runner') ? '<button class="btn sm" data-act="cloneLive" data-id="' + c.id + '" title="Tạo camp mới từ camp này">Nhân bản</button>' : '') +
+      (S.user.canActivate ? '<button class="btn sm danger" data-act="pauseLive" data-id="' + c.id + '" data-name="' + esc(c.name) + '">Tạm dừng</button>' : '') + '</div></td></tr>';
     if (!open) return;
     c.adsets.forEach(function (g) {
       var gcpl = g.leads ? money(g.spend / g.leads) : '';
@@ -126,25 +171,38 @@ function viewLive() {
 
 /* ================= Orders ================= */
 function viewOrders() {
-  var h = '<h2>Camp AI Lên' + (role('runner') ? '<span class="right bar"><button class="btn sm" data-act="syncOrders">Đồng bộ trạng thái từ Meta</button><button class="btn p sm" data-act="newOrder">+ Lên Camp Mới</button></span>' : '') + '</h2>' +
-    '<p class="muted" style="margin-top:-8px">Trạng thái camp tự đồng bộ với Ads Manager mỗi giờ (bật/tạm dừng/xóa ngoài app, quảng cáo bị từ chối).</p>';
-  if (!S.orders.length) return h + '<p class="muted">Chưa có camp nào.</p>';
-  h += '<div class="tbl"><table><tr><th>Mã</th><th>Chiến dịch</th><th>Trạng thái</th><th class="n">Ngân sách/ngày</th><th class="n">Nhóm</th><th class="n">QC trên Meta</th><th>Người tạo</th><th>Cập nhật</th><th>Thao tác</th></tr>';
-  S.orders.forEach(function (o) {
-    var b = [];
-    if (o.status === 'Chờ QC' && S.canQc) b.push('<button class="btn sm go" data-act="editOrder" data-id="' + o.id + '">Duyệt QC</button>');
-    else if (['Nháp', 'Lỗi', 'Đã QC'].indexOf(o.status) >= 0) b.push('<button class="btn sm" data-act="editOrder" data-id="' + o.id + '">Sửa</button>');
-    else b.push('<button class="btn sm" data-act="editOrder" data-id="' + o.id + '">Xem</button>');
-    if (role('runner')) b.push('<button class="btn sm" data-act="cloneOrder" data-id="' + o.id + '">Nhân bản</button>');
-    if (o.status === 'Lỗi' && role('runner')) b.push('<button class="btn sm" data-act="retry" data-id="' + o.id + '">Chạy lại</button>');
-    if (['Đã dựng (tạm dừng)', 'Tạm dừng'].indexOf(o.status) >= 0 && S.user.canActivate) b.push('<button class="btn sm go" data-act="activate" data-id="' + o.id + '" data-name="' + esc(o.name) + '">Bật chạy</button>');
+  var h = pageHead('Camp AI Lên', 'Mọi camp từ lúc nháp đến khi chạy. Trạng thái tự đồng bộ với Ads Manager mỗi giờ.',
+    role('runner') ? '<button class="btn" data-act="syncOrders">↻ Đồng bộ từ Meta</button><button class="btn p" data-act="newOrder">+ Lên Camp Mới</button>' : '');
+  if (!S.orders.length) return h + emptyState('Chưa có camp nào', 'Bắt đầu bằng "+ Lên Camp Mới", hoặc vào Camp Đang Chạy để nhân bản một camp đang hiệu quả.',
+    role('runner') ? '<button class="btn p" data-act="newOrder">+ Lên Camp Mới</button>' : '');
+  var groups = [['', 'Tất cả'], ['draft', 'Nháp / Lỗi', ['Nháp', 'Lỗi']], ['qc', 'Chờ QC', ['Chờ QC']], ['ready', 'Đã QC', ['Đã QC']],
+                ['build', 'Đang dựng', ['Chờ dựng', 'Đang dựng']], ['built', 'Chờ bật', ['Đã dựng (tạm dừng)', 'Tạm dừng']], ['run', 'Đang chạy', ['Đang chạy']], ['gone', 'Đã xóa', ['Đã xóa trên Meta']]];
+  var cnt = function (g) { return g[2] ? S.orders.filter(function (o) { return g[2].indexOf(o.status) >= 0; }).length : S.orders.length; };
+  if (S.ordF === undefined) S.ordF = S.canQc && cnt(groups[2]) ? 'qc' : '';
+  var cur = groups.filter(function (g) { return g[0] === S.ordF; })[0] || groups[0];
+  if (cur[2] && !cnt(cur)) { S.ordF = ''; cur = groups[0]; }
+  var q = (S.ordQ || '').toLowerCase();
+  var list = S.orders.filter(function (o) { return (!cur[2] || cur[2].indexOf(o.status) >= 0) && (!q || (o.id + ' ' + o.name + ' ' + o.createdBy).toLowerCase().indexOf(q) >= 0); });
+  h += '<div class="filters">' + seg('ord', groups.filter(function (g) { return !g[2] || cnt(g); }).map(function (g) { return [g[0], g[1], cnt(g)]; }), S.ordF) +
+    '<input type="text" data-ordq placeholder="🔍 Tìm mã, tên camp, người tạo…" value="' + esc(S.ordQ || '') + '" style="max-width:280px;margin-left:auto"></div>';
+  if (!list.length) return h + emptyState('Không có camp nào ở mục này', '');
+  h += '<div class="tbl"><table><tr><th>Camp</th><th>Trạng thái</th><th class="n">Ngân sách/ngày</th><th class="n">Nhóm</th><th class="n">Số Ads</th><th>Người tạo</th><th>Cập nhật</th><th></th></tr>';
+  list.forEach(function (o) {
+    var b = [], main = '';
+    if (o.status === 'Chờ QC' && S.canQc) main = '<button class="btn sm go" data-act="editOrder" data-id="' + o.id + '">Duyệt QC</button>';
+    else if (['Đã dựng (tạm dừng)', 'Tạm dừng'].indexOf(o.status) >= 0 && S.user.canActivate) main = '<button class="btn sm go" data-act="activate" data-id="' + o.id + '" data-name="' + esc(o.name) + '">▶ Bật chạy</button>';
+    else if (o.status === 'Lỗi' && role('runner')) main = '<button class="btn sm p" data-act="retry" data-id="' + o.id + '">Chạy lại</button>';
+    else if (o.status === 'Đã QC' && role('runner')) main = '<button class="btn sm p" data-act="editOrder" data-id="' + o.id + '">Chốt camp</button>';
+    if (!/Duyệt QC|Chốt camp/.test(main)) b.push('<button class="btn sm" data-act="editOrder" data-id="' + o.id + '">' + (['Nháp', 'Lỗi', 'Đã QC'].indexOf(o.status) >= 0 ? 'Sửa' : 'Xem') + '</button>');
+    if (role('runner')) b.push('<button class="btn sm ghost" data-act="cloneOrder" data-id="' + o.id + '">Nhân bản</button>');
     if (o.status === 'Đang chạy' && S.user.canActivate) b.push('<button class="btn sm danger" data-act="pauseOrder" data-id="' + o.id + '">Tạm dừng</button>');
-    if (['Nháp', 'Lỗi', 'Đã QC'].indexOf(o.status) >= 0 && !o.campaignId && role('runner')) b.push('<button class="btn sm danger" data-act="deleteOrder" data-id="' + o.id + '">Xóa</button>');
-    b.push('<button class="btn sm" data-act="orderLog" data-id="' + o.id + '">Lịch sử</button>');
-    h += '<tr><td>' + esc(o.id) + '</td><td>' + esc(o.name) + (o.error ? '<div class="muted" style="color:var(--badT)">' + esc(o.error) + '</div>' : '') + (o.metaNote ? '<div class="muted" style="color:var(--warnT)">⚠ ' + esc(o.metaNote) + '</div>' : '') + qcLine(o) +
-      '</td><td>' + statusBadge(o.status) + (o.status === 'Đang dựng' || o.status === 'Chờ dựng' ? ' <span class="spinner"></span>' : '') +
-      '</td><td class="n">' + money(o.budget) + '</td><td class="n">' + o.adsets + '</td><td class="n">' + o.ads + '</td><td>' + esc(o.createdBy) +
-      '</td><td>' + esc(String(o.updatedAt).replace('T', ' ').slice(0, 16)) + '</td><td class="bar">' + b.join('') + '</td></tr>';
+    b.push('<button class="btn sm ghost" data-act="orderLog" data-id="' + o.id + '">Lịch sử</button>');
+    if (['Nháp', 'Lỗi', 'Đã QC'].indexOf(o.status) >= 0 && !o.campaignId && role('runner')) b.push('<button class="btn sm ghost" data-act="deleteOrder" data-id="' + o.id + '" style="color:var(--badT)">Xóa</button>');
+    h += '<tr><td style="min-width:260px"><div style="font-weight:600">' + esc(o.name || '(chưa đặt tên)') + '</div><div class="muted">' + esc(o.id) + '</div>' +
+      (o.error ? '<div class="muted" style="color:var(--badT)">⛔ ' + esc(o.error) + '</div>' : '') + (o.metaNote ? '<div class="muted" style="color:var(--warnT)">⚠ ' + esc(o.metaNote) + '</div>' : '') + qcLine(o) +
+      '</td><td class="nw">' + statusBadge(o.status) + (o.status === 'Đang dựng' || o.status === 'Chờ dựng' ? ' <span class="spinner"></span>' : '') +
+      '</td><td class="n">' + money(o.budget) + '</td><td class="n">' + o.adsets + '</td><td class="n">' + o.ads + '</td><td class="nw">' + esc(String(o.createdBy).split('@')[0]) +
+      '</td><td class="nw muted">' + esc(String(o.updatedAt).replace('T', ' ').slice(5, 16)) + '</td><td><div class="bar" style="flex-wrap:nowrap;justify-content:flex-end">' + main + b.join('') + '</div></td></tr>';
   });
   h += '</table></div>';
   if (S.orders.some(function (o) { return o.status === 'Đang dựng' || o.status === 'Chờ dựng'; })) {
@@ -166,7 +224,7 @@ function qcLine(o) {
 function qcPanel(o) {
   var q = S.qc || (o.qc && o.qc.result);
   var h = '<div class="card" style="margin-top:12px"><div class="hd"><span class="ttl">Soát nội dung theo chính sách quảng cáo + quy tắc content</span>' + (q ? '<span class="right">' + qcBadge(q) + ' <span class="muted">rủi ro ' + esc(q.risk) + '</span></span>' : '') + '</div><div class="bd">';
-  if (!q) return h + '<p class="muted">Bấm "Kiểm tra lại" để soát nội dung.</p></div></div>';
+  if (!q) return h + '<p class="muted">Bấm "Kiểm tra" để soát nội dung.</p></div></div>';
   if (!q.items.length) h += '<ul class="msgs"><li class="w" style="background:var(--ok);color:var(--okT)">✅ Không phát hiện vi phạm.</li></ul>';
   else h += '<ul class="msgs">' + q.items.map(function (x) {
     var cls = x.level === 'RED' || x.level === 'BLACK' ? 'e' : 'w';
@@ -211,21 +269,56 @@ function chip(path, value, label, on, type, locked, extra) {
 }
 
 function viewEditor() {
-  if (!S.order) { if (!role('runner')) return '<p class="muted">Chọn một camp ở tab "Camp AI Lên" để điền phần quảng cáo.</p>'; S.order = blankOrder(); }
+  if (!S.order) { if (!role('runner')) return pageHead('Lên Camp') + emptyState('Chọn một camp để điền nội dung', 'Vào "Camp AI Lên", bấm Sửa ở camp được giao để điền phần ③ Quảng cáo.'); S.order = blankOrder(); }
   var o = S.order, c = o.campaign, L = lockedCD();
-  var h = '<h2>' + (o.id ? 'Camp ' + esc(o.id) + ' ' + statusBadge(o.status) : 'Lên camp mới') +
-    (o.clonedFrom ? ' <span class="muted">nhân bản từ ' + esc(o.clonedFrom) + '</span>' : '') +
-    '<span class="right bar"><button class="btn sm" data-act="expandAll">Mở tất cả</button><button class="btn sm" data-act="collapseAll">Thu gọn tất cả</button></span></h2>';
-  if (o.status === 'Chờ QC') h += '<p class="muted">Camp đang chờ QC, chỉ xem.' + (S.canQc ? ' Kéo xuống mục ④ để duyệt hoặc trả về.' : '') + '</p>';
-  else if (o.status === 'Đã QC') h += '<p class="muted">Camp đã qua QC. Nếu sửa và lưu, camp quay về Nháp và phải QC lại.</p>';
-  else if (!editable()) h += '<p class="muted">Camp đã chốt, chỉ xem. Muốn thay đổi hãy "Nhân bản" thành camp mới.</p>';
-  h += sectionCampaign(o, L) + sectionAdsets(o, L) + sectionAds(o) + sectionReview(o);
+  var title = o.id ? esc(c.name || 'Camp ' + o.id) + ' ' + statusBadge(o.status) : 'Lên Camp Mới';
+  var sub = o.id ? esc(o.id) + (o.clonedFrom ? ' · nhân bản từ ' + esc(o.clonedFrom) : '') + (S.dirty ? ' · <b style="color:var(--warnT)">chưa lưu</b>' : '') : 'Điền 4 bước. App tự lưu khi bạn bấm Lưu nháp, Gửi QC hoặc Chốt camp.';
+  var h = pageHead(title, sub, '<button class="btn sm ghost" data-act="expandAll">Mở tất cả</button><button class="btn sm ghost" data-act="collapseAll">Thu gọn</button>');
+  h += stepper(o);
+  if (o.status === 'Chờ QC') h += note('info', 'Camp đang chờ QC, chỉ xem.' + (S.canQc ? ' Duyệt hoặc trả về ở mục ④.' : ''));
+  else if (o.status === 'Đã QC') h += note('ok', 'Camp đã qua QC. Bấm "Chốt camp" để AI dựng trên Meta. Nếu sửa và lưu, camp quay về Nháp và phải QC lại.');
+  else if (!editable()) h += note('info', 'Camp đã chốt, chỉ xem. Muốn thay đổi hãy "Nhân bản" thành camp mới.');
+  else if (o.qc && o.qc.notes && o.qc.notes.length && o.qc.notes[o.qc.notes.length - 1].decision === 'Trả về')
+    h += note('warn', 'QC trả về: ' + esc(o.qc.notes[o.qc.notes.length - 1].note) + '. Sửa xong bấm Gửi QC lại.');
+  h += sectionCampaign(o, L) + sectionAdsets(o, L) + sectionAds(o) + sectionReview(o) + actionBar(o);
   return h;
+}
+
+function note(kind, html) {
+  var m = { info: ['var(--info)', 'var(--blue)'], ok: ['var(--ok)', 'var(--okT)'], warn: ['var(--warn)', 'var(--warnT)'] }[kind];
+  return '<div style="background:' + m[0] + ';color:' + m[1] + ';padding:10px 14px;border-radius:10px;margin-bottom:14px;font-size:13px">' + html + '</div>';
+}
+
+function orderBudget(o) {
+  return o.campaign.budgetMode === 'campaign' ? Number(o.campaign.dailyBudget) || 0 : o.adsets.reduce(function (s, g) { return s + (Number(g.dailyBudget) || 0); }, 0);
+}
+
+function stepper(o) {
+  var c = S.check, steps = [['cd', 'Chiến dịch', /^Chiến dịch/], ['nqc', 'Nhóm quảng cáo', /^Nhóm/], ['qc', 'Quảng cáo', /^Quảng cáo/], ['rv', 'Kiểm tra & QC']];
+  return '<div class="steps">' + steps.map(function (st, i) {
+    var cls = '';
+    if (c && st[2]) cls = c.errors.some(function (e) { return st[2].test(e.msg); }) ? 'err' : 'ok';
+    if (st[0] === 'rv' && c) cls = c.errors.length || (S.qc && S.qc.decision === 'REJECT') ? 'err' : (S.qc ? 'ok' : '');
+    if (st[0] === 'rv' && ['Đã QC', 'Chờ dựng', 'Đang dựng', 'Đã dựng (tạm dừng)', 'Đang chạy', 'Tạm dừng'].indexOf(o.status) >= 0) cls = 'ok';
+    return '<span class="step ' + cls + '" data-act="jump" data-key="' + st[0] + '"><span class="n">' + (cls === 'ok' ? '✓' : cls === 'err' ? '!' : i + 1) + '</span>' + st[1] + '</span>';
+  }).join('') + '</div>';
+}
+
+function actionBar(o) {
+  var c = S.check;
+  var btns = '<button class="btn" data-act="check">Kiểm tra</button>' +
+    (editable() ? '<button class="btn" data-act="save">Lưu nháp</button>' : '') +
+    ((o.status !== 'Đã QC' || S.dirty) && editable() && role('runner') ? '<button class="btn go" data-act="sendQc"' + (c && !c.errors.length && !(S.qc && S.qc.decision === 'REJECT') ? '' : ' disabled title="Bấm Kiểm tra, sửa hết lỗi ⛔ trước"') + '>Gửi QC ▶</button>' : '') +
+    (o.status === 'Đã QC' && !S.dirty && role('runner') ? '<button class="btn go" data-act="submit"' + (c && !c.errors.length ? '' : ' disabled title="Bấm Kiểm tra trước"') + '>Chốt camp ▶ AI dựng trên Meta</button>' : '');
+  var hint = !c && editable() ? '<span class="muted">Bấm Kiểm tra để soát cấu hình và nội dung.</span>' :
+    c && c.errors.length ? '<span class="badge b-bad">' + c.errors.length + ' lỗi cần sửa</span>' : c ? '<span class="badge b-ok">Cấu hình OK</span>' + (S.qc ? ' ' + qcBadge(S.qc) : '') : '';
+  return '<div class="actbar"><div class="info"><span>Nhóm <b>' + o.adsets.length + '</b></span><span>Mẫu Ads <b>' + o.ads.length + '</b></span><span>Ngân sách <b>' + money(orderBudget(o)) + 'đ</b>/ngày</span>' + hint + '</div>' +
+    '<div class="bar right">' + btns + '</div></div>';
 }
 
 function card(key, cls, title, summary, body, defaultOpen) {
   var open = S.open[key] !== undefined ? S.open[key] : defaultOpen;
-  return '<div class="card ' + cls + (open ? '' : ' collapsed') + '"><div class="hd" data-act="toggle" data-key="' + key + '"><span class="caret">▼</span><span class="ttl">' + title +
+  return '<div id="sec-' + key + '" class="card ' + cls + (open ? '' : ' collapsed') + '"><div class="hd" data-act="toggle" data-key="' + key + '"><span class="caret">▼</span><span class="ttl">' + title +
     '</span><span class="sum">' + (open ? '' : esc(summary)) + '</span></div>' + (open ? '<div class="bd">' + body + '<div class="bar" style="margin-top:12px"><button class="btn sm right" data-act="done" data-key="' + key + '">Xong ▲</button></div></div>' : '') + '</div>';
 }
 
@@ -381,11 +474,7 @@ function sectionAds(o) {
 
 function sectionReview(o) {
   var c = S.check;
-  var b = '<div class="bar"><button class="btn" data-act="check">Kiểm tra lại</button>' +
-    (editable() ? '<button class="btn p" data-act="save">Lưu nháp</button>' : '') +
-    ((o.status !== 'Đã QC' || S.dirty) && editable() && role('runner') ? '<button class="btn go" data-act="sendQc"' + (c && !c.errors.length && !(S.qc && S.qc.decision === 'REJECT') ? '' : ' disabled') + '>Gửi QC ▶</button>' : '') +
-    (o.status === 'Đã QC' && !S.dirty && role('runner') ? '<button class="btn go" data-act="submit"' + (c && !c.errors.length ? '' : ' disabled') + '>Chốt camp ▶ AI dựng trên Meta</button>' : '') + '</div>' +
-    '<p class="muted" style="margin:6px 0 0">Quy trình: Nháp → Gửi QC → QC duyệt → Chốt camp → AI dựng (tạm dừng) → Người duyệt bật chạy.</p>';
+  var b = '<p class="muted" style="margin:8px 0 0">Quy trình: Nháp → Gửi QC → QC duyệt → Chốt camp → AI dựng (tạm dừng) → Người duyệt bật chạy.</p>';
   if (c) {
     var sm = c.summary;
     b += '<div class="stat"><div><span class="muted">Nhóm</span><b>' + sm.adsets + '</b></div><div><span class="muted">Mẫu quảng cáo</span><b>' + sm.adTemplates + '</b></div>' +
@@ -394,7 +483,7 @@ function sectionReview(o) {
     b += '<ul class="msgs">' + c.errors.map(function (e) { return '<li class="e">⛔ ' + esc(e.msg) + '</li>'; }).join('') +
       c.warnings.map(function (e) { return '<li class="w">⚠ ' + esc(e.msg) + '</li>'; }).join('') +
       (!c.errors.length && !c.warnings.length ? '<li class="w" style="background:var(--ok);color:var(--okT)">✅ Không có lỗi.</li>' : '') + '</ul>';
-  } else b += '<p class="muted">Bấm "Kiểm tra lại" để soát camp trước khi chốt.</p>';
+  } else b += '<p class="muted">Bấm "Kiểm tra" ở thanh dưới cùng để soát camp trước khi gửi QC.</p>';
   if (o.build && o.build.log && o.build.log.length) {
     b += '<details style="margin-top:10px"><summary>Tiến trình dựng camp</summary><ul class="msgs">' + o.build.log.slice().reverse().map(function (l) {
       return '<li class="w" style="background:#f8fafc;color:#374151">' + esc(l.t.replace('T', ' ')) + ' · ' + esc(l.a) + ' ' + esc(l.d) + '</li>'; }).join('') + '</ul></details>';
@@ -407,9 +496,8 @@ function sectionReview(o) {
 /* ================= Library / Log / Users / Settings ================= */
 function viewLibrary() {
   var f = S.libFilter, q = f.q.toLowerCase();
-  var h = '<h2>Tệp Đối Tượng & Form <span class="muted">cập nhật ' + esc(S.library.updatedAt || '—') + '</span>' +
-    (role('runner') ? '<button class="btn sm right" data-act="syncLib">Đồng bộ từ Meta</button>' : '') + '</h2>';
-  h += '<div class="bar" style="margin-bottom:10px"><select data-libacc>' + '<option value="">Tất cả tài khoản</option>' + S.settings.accounts.map(function (a) {
+  var h = pageHead('Tệp & Form', 'Tệp đối tượng và lead form thật trên Meta · cập nhật ' + esc(S.library.updatedAt || '—'), role('runner') ? '<button class="btn" data-act="syncLib">↻ Đồng bộ từ Meta</button>' : '');
+  h += '<div class="bar" style="margin-bottom:10px"><select data-libacc style="max-width:260px">' + '<option value="">Tất cả tài khoản</option>' + S.settings.accounts.map(function (a) {
     return '<option value="' + a.id + '"' + (f.acc === a.id ? ' selected' : '') + '>' + esc(a.name) + '</option>'; }).join('') +
     '</select><input type="text" placeholder="🔍 Tìm…" data-libq value="' + esc(f.q) + '" style="max-width:300px"></div>';
   h += '<div class="card"><div class="hd"><span class="ttl">Tệp đối tượng</span></div><div class="tbl" style="border:0"><table><tr><th>Mã</th><th>Tài khoản</th><th>Loại</th><th>Mô tả</th><th class="n">Số tệp</th><th>Cập nhật nguồn</th></tr>' +
@@ -424,7 +512,9 @@ function viewLibrary() {
 }
 
 function viewLog() {
-  var h = '<h2>Lịch Sử Thao Tác <input type="text" placeholder="Lọc theo mã camp" data-logf value="' + esc(S.logFilter) + '" style="max-width:220px"><button class="btn sm" data-act="reloadLog">Lọc</button></h2>';
+  var h = pageHead('Lịch Sử', 'Mọi thao tác: ai làm, lúc nào, ID trên Meta, kết quả.') +
+    '<div class="filters"><input type="text" placeholder="Lọc theo mã camp, vd DH-20261119-001" data-logf value="' + esc(S.logFilter) + '" style="max-width:320px"><button class="btn" data-act="reloadLog">Lọc</button>' +
+    (S.logFilter ? '<button class="btn ghost" data-act="clearLog">Bỏ lọc</button>' : '') + '</div>';
   return h + '<div class="tbl"><table><tr><th>Thời gian</th><th>Người</th><th>Camp</th><th>Hành động</th><th>ID Meta</th><th>Kết quả</th><th>Chi tiết</th></tr>' + S.log.map(function (l) {
     return '<tr><td>' + esc(l.time) + '</td><td>' + esc(l.user) + '</td><td>' + esc(l.orderId) + '</td><td>' + esc(l.action) + '</td><td>' + esc(l.objectId) + '</td><td>' +
       (l.result === 'OK' ? '<span class="badge b-ok">OK</span>' : '<span class="badge b-bad">' + esc(l.result) + '</span>') + '</td><td class="muted">' + esc(l.detail) + '</td></tr>'; }).join('') + '</table></div>';
@@ -432,7 +522,7 @@ function viewLog() {
 
 function viewUsers() {
   var u = S.editUser || { email: '', name: '', role: 'runner', pin: '', active: true, approver: false, isNew: true };
-  var h = '<h2>Team</h2><div class="card"><div class="hd"><span class="ttl">' + (u.isNew ? 'Thêm thành viên' : 'Sửa ' + esc(u.email)) + '</span></div><div class="bd">' +
+  var h = pageHead('Team', 'Thêm thành viên, phân vai trò. Mỗi người đăng nhập bằng Gmail + mã PIN riêng.') + '<div class="card"><div class="hd"><span class="ttl">' + (u.isNew ? 'Thêm thành viên' : 'Sửa ' + esc(u.email)) + '</span></div><div class="bd">' +
     '<div class="row"><div class="fld"><label>Email (Gmail)</label><input type="email" id="u-email" value="' + esc(u.email) + '"' + (u.isNew ? '' : ' disabled') + '></div>' +
     '<div class="fld"><label>Tên</label><input type="text" id="u-name" value="' + esc(u.name) + '"></div>' +
     '<div class="fld"><label>' + (u.isNew ? 'Mã PIN (≥ 6 số)' : 'Đặt lại PIN (để trống = giữ)') + '</label><input type="text" id="u-pin" inputmode="numeric"></div></div>' +
@@ -458,7 +548,7 @@ function embedUrl(u) {
 
 function viewDashboard() {
   var list = dashList();
-  if (!list.length) return '<h2>Báo Cáo</h2><p class="muted">Chưa có báo cáo. ' + (role('admin') ? 'Thêm link Looker Studio ở tab Cài Đặt.' : 'Nhờ quản trị viên thêm link ở tab Cài Đặt.') + '</p>';
+  if (!list.length) return pageHead('Báo Cáo') + emptyState('Chưa có báo cáo', role('admin') ? 'Thêm link Looker Studio ở Cài Đặt → Chung.' : 'Nhờ quản trị viên thêm link ở Cài Đặt.');
   var cur = Math.min(S.dashIdx || 0, list.length - 1), d = list[cur];
   return '<h2>Báo Cáo' + (list.length > 1 ? ' <span class="chips">' + list.map(function (x, i) {
       return '<label class="chip' + (i === cur ? ' on' : '') + '" data-act="pickDash" data-i="' + i + '">' + esc(x.name || ('Báo cáo ' + (i + 1))) + '</label>'; }).join('') + '</span>' : ' <span class="muted">' + esc(d.name || '') + '</span>') +
@@ -493,7 +583,10 @@ function viewReportSettings() {
 function viewSettings() {
   var s = S.settings, L = s.limits;
   var num = function (k, label) { return '<div class="fld s" style="flex:0 0 200px"><label>' + label + '</label><input type="number" data-set="limits.' + k + '" value="' + esc(L[k]) + '"></div>'; };
-  var h = '<h2>Cài Đặt</h2><div class="card"><div class="hd"><span class="ttl">Giới hạn an toàn</span></div><div class="bd"><div class="row">' +
+  var T = S.setTab || 'general', tab = function (k) { return '<div class="stab' + (T === k ? ' on' : '') + '" data-s="' + k + '">'; };
+  var h = pageHead('Cài Đặt', 'Thay đổi chỉ có hiệu lực sau khi bấm "Lưu cài đặt".', '<button class="btn p" data-act="saveSettings">Lưu cài đặt</button>') +
+    '<div class="filters">' + seg('set', [['general', 'Chung'], ['report', 'Báo cáo Telegram'], ['qc', 'QC nội dung'], ['adv', 'Nâng cao']], T) + '</div>' + tab('general') +
+    '<div class="card"><div class="hd"><span class="ttl">Giới hạn an toàn</span></div><div class="bd"><div class="row">' +
     num('minDaily', 'Ngân sách tối thiểu/ngày') + num('maxDailyPerCampaign', 'Tối đa/chiến dịch/ngày') + num('maxNewPerDay', 'Tổng camp mới/ngày') +
     num('singleAdsetBelow', 'Dưới mức này chỉ nên 1 nhóm') + num('audienceMaxDays', 'Tuổi tệp tối đa (ngày)') + num('primaryTextChars', 'Ký tự nội dung hiển thị') + '</div></div></div>';
   h += '<div class="card"><div class="hd"><span class="ttl">Ngành và mục tiêu chi phí/lead</span></div><div class="bd">' + s.industries.map(function (x, i) {
@@ -506,16 +599,16 @@ function viewSettings() {
       '<button class="btn sm danger" data-act="delDash" data-i="' + i + '">Xóa</button></div>'; }).join('') +
     '<button class="btn sm" data-act="addDash" style="margin-top:8px">+ Thêm báo cáo</button></div></div>';
   h += '<div class="card"><div class="hd"><span class="ttl">Email nhận thông báo (cách nhau bằng dấu phẩy)</span></div><div class="bd"><input type="text" data-setlist="notifyEmails" value="' + esc((s.notifyEmails || []).join(', ')) + '"></div></div>';
-  h += viewReportSettings();
+  h += '</div>' + tab('report') + viewReportSettings() + '</div>' + tab('qc');
   h += '<div class="card"><div class="hd"><span class="ttl">QC nội dung</span></div><div class="bd">' +
-    '<label>Người được duyệt QC (email, cách nhau bằng dấu phẩy). Để trống = chỉ chủ app.</label><input type="text" data-setlist="qcReviewers" value="' + esc((s.qcReviewers || []).join(', ')) + '">' +
+    '<label class="lbl" style="display:block;margin-top:8px">Người được duyệt QC (email, cách nhau bằng dấu phẩy). Để trống = chỉ chủ app.</label><input type="text" data-setlist="qcReviewers" value="' + esc((s.qcReviewers || []).join(', ')) + '">' +
     '<label style="margin-top:10px;display:block">Bộ luật (JSON). ' + ((s.qcRules || []).length ? 'Đang dùng bộ đã sửa: ' + s.qcRules.length + ' luật.' : 'Trống = dùng bộ mặc định theo 2 tài liệu chính sách.') +
     ' Mỗi luật: id, level (YELLOW/ORANGE/RED/BLACK), src, pattern (regex), msg, fix, replace (tự thay).</label>' +
     '<textarea id="qc-json" style="min-height:140px;font-family:monospace;font-size:12px">' + esc((s.qcRules || []).length ? JSON.stringify(s.qcRules, null, 2) : '[]') + '</textarea>' +
     '<button class="btn sm" data-act="qcRulesDefault" style="margin-top:6px">Nạp bộ mặc định để sửa</button></div></div>';
-  h += '<div class="card"><div class="hd"><span class="ttl">Nâng cao: tài khoản, trang, khu vực (JSON)</span></div><div class="bd"><textarea id="adv-json" style="min-height:220px;font-family:monospace;font-size:12px">' +
+  h += '</div>' + tab('adv') + '<div class="card"><div class="hd"><span class="ttl">Nâng cao: tài khoản, trang, khu vực (JSON)</span></div><div class="bd"><textarea id="adv-json" style="min-height:220px;font-family:monospace;font-size:12px">' +
     esc(JSON.stringify({ accounts: s.accounts, regions: s.regions, defaults: s.defaults }, null, 2)) + '</textarea></div></div>';
-  return h + '<button class="btn p" data-act="saveSettings">Lưu cài đặt</button>';
+  return h + '</div><div class="bar" style="margin-top:6px"><button class="btn p" data-act="saveSettings">Lưu cài đặt</button></div>';
 }
 
 /* ================= Binding ================= */
@@ -533,6 +626,7 @@ document.addEventListener('input', function (e) {
     if (el.dataset.counter) { var c = document.querySelector('[data-count="' + el.dataset.bind.replace(/\.message$/, '') + '"]'); if (c) c.textContent = el.value.length + ' ký tự'; }
   }
   if (el.dataset.search) { S.open[el.dataset.search] = el.value; var pos = el.selectionStart; render(); var n = document.querySelector('[data-search="' + el.dataset.search + '"]'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }
+  if (el.dataset.ordq !== undefined) { S.ordQ = el.value; var p3 = el.selectionStart; render(); var o3 = document.querySelector('[data-ordq]'); o3.focus(); o3.setSelectionRange(p3, p3); }
   if (el.dataset.libq !== undefined) { S.libFilter.q = el.value; var p2 = el.selectionStart; render(); var m = document.querySelector('[data-libq]'); m.focus(); m.setSelectionRange(p2, p2); }
   if (el.dataset.logf !== undefined) S.logFilter = el.value;
   if (el.dataset.tq) S.open[el.dataset.tq] = el.value;
@@ -611,6 +705,7 @@ document.addEventListener('click', function (e) {
     pauseLive: function () { if (confirm('Tạm dừng camp "' + el.dataset.name + '"?')) call('pauseLive', { campaignId: id, name: el.dataset.name }).then(function () { toast('Đã tạm dừng'); loadTab(); }); },
     orderLog: function () { S.logFilter = id; go('log'); },
     reloadLog: function () { loadTab(); },
+    clearLog: function () { S.logFilter = ''; loadTab(); },
     syncLive: function () { el.innerHTML = '<span class="spinner"></span> Đang đồng bộ…'; el.disabled = true; call('syncLive').then(function (d) { S.live = d; toast('Đã đồng bộ'); render(); }).catch(rerender); },
     syncOrders: function () { el.innerHTML = '<span class="spinner"></span> Đang đồng bộ…'; el.disabled = true;
       call('syncOrders').then(function (r) { toast('Đã kiểm tra ' + r.checked + ' camp' + (r.changed.length ? ', cập nhật ' + r.changed.join(', ') : ', không có thay đổi')); loadTab(); }).catch(rerender); },
@@ -640,7 +735,15 @@ document.addEventListener('click', function (e) {
     addAd: function () { S.order.ads.push(newAd(S.order.ads.length + 1)); S.dirty = true; rerender(); },
     dupAd: function () { var x = clone(S.order.ads[+el.dataset.i]); x.key = newAd(9).key; x.name = x.name + ' (bản sao)'; S.order.ads.splice(+el.dataset.i + 1, 0, x); S.open['a_' + x.key] = true; S.dirty = true; rerender(); },
     delAd: function () { if (confirm('Xóa quảng cáo này?')) { S.order.ads.splice(+el.dataset.i, 1); S.dirty = true; rerender(); } },
-    check: function () { runChecks().then(function () { S.open.rv = true; rerender(); }); },
+    seg: function () {
+      var k = el.dataset.seg, v = el.dataset.v;
+      if (k === 'liveAcc') S.liveF.acc = v; else if (k === 'liveOver') S.liveF.over = v; else if (k === 'ord') S.ordF = v; else if (k === 'set') S.setTab = v;
+      if (k === 'set') { document.querySelectorAll('.stab').forEach(function (x) { x.classList.toggle('on', x.dataset.s === v); }); el.parentNode.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === el); }); return; }
+      rerender();
+    },
+    jump: function () { var k = el.dataset.key; S.open[k] = true; rerender(); var t = document.getElementById('sec-' + k); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); },
+    check: function () { runChecks().then(function () { S.open.rv = true; rerender();
+      toast(S.check.errors.length ? S.check.errors.length + ' lỗi cấu hình, xem mục ④' : 'Cấu hình OK · QC: ' + ((QC_DEC[S.qc.decision] || [S.qc.decision])[0]) + ' (' + S.qc.score + 'đ)', S.check.errors.length > 0); }); },
     save: function () { el.disabled = true; saveQueued().then(function (o) { toast('Đã lưu ' + o.id);
       return runChecks(); }).then(function () { rerender(); }).catch(function () { el.disabled = false; }); },
     qcFix: function () { call('qcAutoFix', { order: S.order }).then(function (r) { S.order.ads = r.order.ads; S.dirty = true; toast('Đã thay ' + r.replaced + ' cụm từ. Nhớ Lưu nháp.'); return runChecks(); }).then(rerender); },

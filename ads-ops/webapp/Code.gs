@@ -176,7 +176,8 @@ function defaultSettings_() {
               audienceMaxDays: 90, primaryTextChars: 125, frequencyWarn: 2.5 },
     defaults: { ageMin: 23, ageMax: 55, gender: 'all', cta: 'SIGN_UP', attributionDays: 1, defaultFormByPage: {} },
     approvers: [],
-    notifyEmails: []
+    notifyEmails: [],
+    dashboards: []
   };
 }
 
@@ -365,6 +366,7 @@ function saveUser_(admin, p) {
 /* =========================== Bootstrap =========================== */
 
 function bootstrap_(user) {
+  seedLocalDashboards_();
   return {
     user: publicUser_(user),
     settings: getSettings_(),
@@ -526,4 +528,15 @@ function industryFromName(name, industries) {
   });
   if (hits.length === 1) return hits[0];
   return (industries || []).filter(function (i) { return i.name === 'Đa ngành'; })[0] || null;
+}
+
+/** One-time: a gitignored Local.gs may define LOCAL_DASHBOARDS; copy them into settings so they survive later deploys. */
+function seedLocalDashboards_() {
+  try {
+    if (typeof LOCAL_DASHBOARDS === 'undefined' || !LOCAL_DASHBOARDS.length) return;
+    var s = getSettings_();
+    if (s.dashboards && s.dashboards.length) return;
+    s.dashboards = LOCAL_DASHBOARDS;
+    putSetting_('config', s);
+  } catch (e) { Logger.log('seed dashboards: ' + e); }
 }

@@ -40,6 +40,9 @@ def main():
         script_id = call("POST", "/projects", {"title": a.title})["scriptId"]
         print("Đã tạo dự án:", script_id)
     files = [{"name": n, "type": t, "source": open(os.path.join(SRC, f), encoding="utf-8").read()} for n, t, f in FILES]
+    local = os.path.join(SRC, "Local.gs")  # gitignored per-install values (e.g. dashboard links); optional
+    if os.path.exists(local):
+        files.append({"name": "Local", "type": "SERVER_JS", "source": open(local, encoding="utf-8").read()})
     call("PUT", f"/projects/{script_id}/content", {"files": files})
     print("Đã tải", len(files), "file lên")
     ver = call("POST", f"/projects/{script_id}/versions", {"description": "Bản cập nhật từ Claude"})["versionNumber"]

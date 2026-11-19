@@ -65,13 +65,13 @@ function render() {
   var app = $('#app');
   if (!S.user) { app.innerHTML = viewLogin(); return; }
   var tabs = [['live', 'Đang chạy'], ['orders', 'Đơn lên camp'], ['edit', S.order && S.order.id ? 'Sửa đơn ' + S.order.id : '+ Tạo đơn'],
-              ['library', 'Thư viện'], ['log', 'Nhật ký']];
+              ['dash', 'Dashboard'], ['library', 'Thư viện'], ['log', 'Nhật ký']];
   if (role('admin')) tabs.push(['users', 'Thành viên'], ['settings', 'Cài đặt']);
   var html = '<header><h1>Lên camp Meta</h1><nav>' + tabs.map(function (t) {
     return '<button data-act="tab" data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'active' : '') + '">' + esc(t[1]) + '</button>';
-  }).join('') + '</nav><div class="who">' + esc(S.user.name || S.user.email) + '<br><span>' + esc(S.user.roleLabel) +
+  }).join('') + '</nav>' + (dashList()[0] ? '<a class="btn sm" href="' + esc(dashList()[0].url) + '" target="_blank" rel="noopener" style="background:#fff;color:var(--blue)">📊 Mở báo cáo</a>' : '') + '<div class="who">' + esc(S.user.name || S.user.email) + '<br><span>' + esc(S.user.roleLabel) +
     '</span> · <a data-act="pin">Đổi PIN</a> · <a data-act="logout">Thoát</a></div></header><main>';
-  var v = { live: viewLive, orders: viewOrders, edit: viewEditor, library: viewLibrary, log: viewLog, users: viewUsers, settings: viewSettings }[S.tab];
+  var v = { dash: viewDashboard, live: viewLive, orders: viewOrders, edit: viewEditor, library: viewLibrary, log: viewLog, users: viewUsers, settings: viewSettings }[S.tab];
   html += v ? v() : '';
   app.innerHTML = html + '</main>';
 }
@@ -410,6 +410,27 @@ function viewUsers() {
   return h;
 }
 
+function dashList() { return (S.settings && S.settings.dashboards || []).filter(function (d) { return d && d.url; }); }
+
+/** Looker Studio / Data Studio link → embeddable link. */
+function embedUrl(u) {
+  u = String(u || '').trim().replace('datastudio.google.com', 'lookerstudio.google.com').replace(/\/u\/\d+\//, '/');
+  if (u.indexOf('/embed/reporting/') < 0) u = u.replace('/reporting/', '/embed/reporting/');
+  return u.split('?')[0];
+}
+
+function viewDashboard() {
+  var list = dashList();
+  if (!list.length) return '<h2>Dashboard</h2><p class="muted">Chưa có báo cáo. ' + (role('admin') ? 'Thêm link Looker Studio ở tab Cài đặt.' : 'Nhờ quản trị viên thêm link ở tab Cài đặt.') + '</p>';
+  var cur = Math.min(S.dashIdx || 0, list.length - 1), d = list[cur];
+  return '<h2>Dashboard' + (list.length > 1 ? ' <span class="chips">' + list.map(function (x, i) {
+      return '<label class="chip' + (i === cur ? ' on' : '') + '" data-act="pickDash" data-i="' + i + '">' + esc(x.name || ('Báo cáo ' + (i + 1))) + '</label>'; }).join('') + '</span>' : ' <span class="muted">' + esc(d.name || '') + '</span>') +
+    '<a class="btn sm right" href="' + esc(d.url) + '" target="_blank" rel="noopener">Mở trong tab mới ↗</a></h2>' +
+    '<div class="card" style="overflow:hidden"><iframe src="' + esc(embedUrl(d.url)) + '" style="width:100%;height:calc(100vh - 170px);border:0;display:block" allowfullscreen ' +
+    'sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"></iframe></div>' +
+    '<p class="muted">Không thấy báo cáo? (1) Chủ báo cáo bật nhúng: trong Looker Studio → Tệp → Nhúng báo cáo → Bật nhúng. (2) Người xem phải có quyền xem báo cáo (Chia sẻ). (3) Hoặc bấm "Mở trong tab mới".</p>';
+}
+
 function viewSettings() {
   var s = S.settings, L = s.limits;
   var num = function (k, label) { return '<div class="fld s" style="flex:0 0 200px"><label>' + label + '</label><input type="number" data-set="limits.' + k + '" value="' + esc(L[k]) + '"></div>'; };
@@ -419,6 +440,12 @@ function viewSettings() {
   h += '<div class="card"><div class="hd"><span class="ttl">Ngành và mục tiêu chi phí/lead</span></div><div class="bd">' + s.industries.map(function (x, i) {
     return '<div class="row" style="margin-top:6px"><div class="fld"><input type="text" data-set="industries.' + i + '.name" value="' + esc(x.name) + '"></div><div class="fld s"><input type="number" data-set="industries.' + i + '.target" value="' + esc(x.target) + '"></div></div>'; }).join('') +
     '<button class="btn sm" data-act="addIndustry" style="margin-top:8px">+ Thêm ngành</button></div></div>';
+  s.dashboards = s.dashboards || [];
+  h += '<div class="card"><div class="hd"><span class="ttl">Dashboard (link Looker Studio)</span></div><div class="bd">' + s.dashboards.map(function (x, i) {
+    return '<div class="row" style="margin-top:6px"><div class="fld s" style="flex:0 0 200px"><input type="text" placeholder="Tên, vd: Báo cáo Ads" data-set="dashboards.' + i + '.name" value="' + esc(x.name) + '"></div>' +
+      '<div class="fld"><input type="text" placeholder="https://lookerstudio.google.com/reporting/…" data-set="dashboards.' + i + '.url" value="' + esc(x.url) + '"></div>' +
+      '<button class="btn sm danger" data-act="delDash" data-i="' + i + '">Xóa</button></div>'; }).join('') +
+    '<button class="btn sm" data-act="addDash" style="margin-top:8px">+ Thêm báo cáo</button></div></div>';
   h += '<div class="card"><div class="hd"><span class="ttl">Email nhận thông báo (cách nhau bằng dấu phẩy)</span></div><div class="bd"><input type="text" data-setlist="notifyEmails" value="' + esc((s.notifyEmails || []).join(', ')) + '"></div></div>';
   h += '<div class="card"><div class="hd"><span class="ttl">Nâng cao: tài khoản, trang, khu vực (JSON)</span></div><div class="bd"><textarea id="adv-json" style="min-height:220px;font-family:monospace;font-size:12px">' +
     esc(JSON.stringify({ accounts: s.accounts, regions: s.regions, defaults: s.defaults }, null, 2)) + '</textarea></div></div>';
@@ -565,10 +592,14 @@ document.addEventListener('click', function (e) {
                 approver: $('#u-appr').checked, active: $('#u-active').checked };
       call('saveUser', { user: u }).then(function (list) { S.users = list; S.editUser = null; toast('Đã lưu. Gửi email và mã PIN cho thành viên.'); render(); });
     },
+    pickDash: function () { S.dashIdx = +el.dataset.i; rerender(); },
+    addDash: function () { S.settings.dashboards = (S.settings.dashboards || []).concat([{ name: '', url: '' }]); rerender(); },
+    delDash: function () { S.settings.dashboards.splice(+el.dataset.i, 1); rerender(); },
     addIndustry: function () { S.settings.industries.push({ name: '', target: 120000 }); rerender(); },
     saveSettings: function () {
       try { var adv = JSON.parse($('#adv-json').value); Object.assign(S.settings, adv); } catch (err) { return toast('JSON nâng cao không hợp lệ', true); }
       S.settings.industries = S.settings.industries.filter(function (x) { return x.name; });
+      S.settings.dashboards = (S.settings.dashboards || []).filter(function (x) { return x.url; });
       call('saveSettings', { settings: S.settings }).then(function (s) { S.settings = s; toast('Đã lưu cài đặt'); render(); });
     }
   };

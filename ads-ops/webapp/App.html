@@ -86,8 +86,9 @@ function render() {
         return '<button data-act="tab" data-tab="' + t[0] + '" class="' + cls + '">' + icon(t[0]) + '<span>' + esc(t[1]) + '</span>' + (t[2] ? '<span class="cnt" title="Camp chờ bạn duyệt QC">' + t[2] + '</span>' : '') + '</button>';
       }).join('');
     }).join('') + '</nav>' +
-    '<div class="who"><span class="ava">' + esc(String(nm).trim().charAt(0).toUpperCase()) + '</span><div><div class="nm">' + esc(nm) + '</div><div class="rl" style="color:#94a3b8">' + esc(S.user.roleLabel) + '</div>' +
-    '<div><a data-act="pin">Đổi PIN</a> · <a data-act="logout">Thoát</a></div></div></div></aside><main>';
+    '<div class="who"><div class="me"><span class="ava">' + esc(String(nm).trim().charAt(0).toUpperCase()) + '</span><div style="min-width:0"><div class="nm" title="' + esc(S.user.email) + '">' + esc(nm) + '</div>' +
+    '<div class="rl">' + esc(S.user.roleLabel) + '</div></div></div>' +
+    '<div class="acts"><button data-act="pin">🔑 Đổi PIN</button><button data-act="logout">⎋ Đăng xuất</button></div></div></aside><main>';
   var v = { dash: viewDashboard, live: viewLive, orders: viewOrders, edit: viewEditor, library: viewLibrary, log: viewLog, users: viewUsers, settings: viewSettings }[S.tab];
   html += v ? v() : '';
   app.innerHTML = html + '</main></div>';
@@ -594,15 +595,27 @@ function viewReportSettings() {
 
 function viewSettings() {
   var s = S.settings, L = s.limits;
-  var num = function (k, label, isMoney) { return '<div class="fld s" style="flex:0 0 200px"><label>' + label + '</label>' + (isMoney ?
-    '<input type="text" inputmode="numeric" data-money data-set="limits.' + k + '" value="' + moneyVal(L[k]) + '">' : '<input type="number" data-set="limits.' + k + '" value="' + esc(L[k]) + '">') + '</div>'; };
   var T = S.setTab || 'general', tab = function (k) { return '<div class="stab' + (T === k ? ' on' : '') + '" data-s="' + k + '">'; };
+  var num = function (k, label, help, isMoney, unit) {
+    return '<div class="fld" style="flex:0 1 380px"><label>' + label + '</label>' + (isMoney ?
+      '<input type="text" inputmode="numeric" data-money data-set="limits.' + k + '" value="' + moneyVal(L[k]) + '">' :
+      '<div style="display:flex;align-items:center;gap:8px"><input type="number" data-set="limits.' + k + '" value="' + esc(L[k]) + '" style="max-width:140px"><span class="muted">' + (unit || '') + '</span></div>') +
+      '<div class="muted" style="line-height:1.45">' + help + '</div></div>'; };
+  var grp = function (title, desc, body) { return '<div style="margin-top:14px"><div class="lbl" style="font-size:14px">' + title + '</div><div class="muted" style="margin:2px 0 4px">' + desc + '</div><div class="row" style="margin-top:6px">' + body + '</div></div>'; };
   var h = pageHead('Cài Đặt', 'Thay đổi chỉ có hiệu lực sau khi bấm "Lưu cài đặt".', '<button class="btn p" data-act="saveSettings">Lưu cài đặt</button>') +
     '<div class="filters">' + seg('set', [['general', 'Chung'], ['report', 'Báo cáo Telegram'], ['qc', 'QC nội dung'], ['adv', 'Nâng cao']], T) + '</div>' + tab('general') +
-    '<div class="card"><div class="hd"><span class="ttl">Giới hạn an toàn</span></div><div class="bd"><div class="row">' +
-    num('minDaily', 'Ngân sách tối thiểu/ngày', 1) + num('maxDailyPerCampaign', 'Tối đa/chiến dịch/ngày', 1) + num('maxNewPerDay', 'Tổng ngân sách camp mới/ngày', 1) +
-    num('singleAdsetBelow', 'Dưới mức này chỉ nên 1 nhóm', 1) + num('audienceMaxDays', 'Tuổi tệp tối đa (ngày)') + num('primaryTextChars', 'Ký tự nội dung hiển thị') + '</div></div></div>';
-  h += '<div class="card"><div class="hd"><span class="ttl">Ngành và mục tiêu chi phí/lead</span></div><div class="bd">' + s.industries.map(function (x, i) {
+    '<div class="card"><div class="hd"><span class="ttl">Giới hạn an toàn khi lên camp</span><span class="muted">App tự kiểm tra khi bấm "Kiểm tra". ⛔ = chặn, không gửi QC được · ⚠ = chỉ cảnh báo</span></div><div class="bd">' +
+    grp('💰 Ngân sách', 'Chống gõ nhầm số tiền và chống tiêu quá tay trong một ngày.',
+      num('minDaily', 'Ngân sách tối thiểu mỗi camp', '⛔ Camp có tổng ngân sách/ngày <b>thấp hơn</b> mức này bị chặn (quá ít để Meta học).', 1) +
+      num('maxDailyPerCampaign', 'Ngân sách tối đa mỗi camp', '⛔ Camp có tổng ngân sách/ngày <b>cao hơn</b> mức này bị chặn (chống gõ thừa số 0).', 1) +
+      num('maxNewPerDay', 'Trần tổng ngân sách camp mới trong 1 ngày', '⛔ Cộng ngân sách mọi camp lên trong ngày, vượt mức này thì camp tiếp theo bị chặn.', 1)) +
+    grp('🧩 Cấu trúc camp', 'Tránh chia ngân sách quá mỏng.',
+      num('singleAdsetBelow', 'Camp dưới mức này chỉ nên có 1 nhóm', '⚠ Ngân sách/ngày thấp hơn mức này mà chia nhiều nhóm thì mỗi nhóm quá ít tiền để ra kết quả.', 1)) +
+    grp('🎯 Tệp & nội dung', 'Nhắc khi dùng tệp cũ hoặc nội dung quá dài.',
+      num('audienceMaxDays', 'Tệp đối tượng cũ hơn', '⚠ Tệp tạo/cập nhật quá số ngày này bị đánh dấu "cũ", nên làm mới tệp.', 0, 'ngày') +
+      num('primaryTextChars', 'Độ dài nội dung hiển thị', '⚠ Meta chỉ hiện chừng này ký tự trước nút "Xem thêm". Nội dung dài hơn sẽ được nhắc đưa ý chính lên đầu.', 0, 'ký tự')) +
+    '</div></div>';
+  h += '<div class="card"><div class="hd"><span class="ttl">Mục tiêu chi phí/lead theo ngành</span><span class="muted">Camp Đang Chạy tô đỏ camp có chi phí/lead cao hơn mục tiêu ngành (nhận ngành từ tên camp)</span></div><div class="bd">' + s.industries.map(function (x, i) {
     return '<div class="row" style="margin-top:6px"><div class="fld"><input type="text" data-set="industries.' + i + '.name" value="' + esc(x.name) + '"></div><div class="fld s"><input type="text" inputmode="numeric" data-money data-set="industries.' + i + '.target" value="' + moneyVal(x.target) + '"></div></div>'; }).join('') +
     '<button class="btn sm" data-act="addIndustry" style="margin-top:8px">+ Thêm ngành</button></div></div>';
   s.dashboards = s.dashboards || [];

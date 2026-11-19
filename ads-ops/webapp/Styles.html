@@ -24,7 +24,12 @@
   nav.menu button.cta { background:var(--blue); color:#fff; margin:2px 0 4px; }
   nav.menu button.cta:hover { background:#1e40af; }
   .cnt { margin-left:auto; background:#f59e0b; color:#111; font-size:11px; font-weight:700; border-radius:10px; padding:1px 7px; }
-  .who { border-top:1px solid rgba(255,255,255,.08); padding:12px 14px; display:flex; gap:10px; align-items:center; font-size:12px; }
+  .who { border-top:1px solid rgba(255,255,255,.08); padding:12px 12px 14px; font-size:12px; }
+  .who .me { display:flex; gap:10px; align-items:center; }
+  .who .rl { color:#94a3b8; font-size:12px; }
+  .who .acts { display:flex; gap:6px; margin-top:10px; }
+  .who .acts button { flex:1; background:rgba(255,255,255,.07); color:#e2e8f0; border:1px solid rgba(255,255,255,.12); border-radius:7px; padding:6px 4px; font-size:12px; cursor:pointer; font-family:inherit; white-space:nowrap; }
+  .who .acts button:hover { background:rgba(255,255,255,.16); color:#fff; }
   .ava { width:32px; height:32px; border-radius:50%; background:#334e6e; color:#fff; display:grid; place-items:center; font-weight:700; flex:0 0 32px; }
   .who .nm { color:#fff; font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px; }
   .who a { color:#94a3b8; cursor:pointer; text-decoration:none; } .who a:hover { color:#fff; }
@@ -151,7 +156,7 @@
     .shell { display:block; }
     aside.side { position:sticky; top:0; z-index:30; width:auto; height:auto; flex-direction:row; flex-wrap:wrap; align-items:center; }
     .brand { padding:10px 14px; font-size:15px; } .brand small { display:none; }
-    .who { border:0; padding:8px 12px; margin-left:auto; } .who .nm, .who .rl { display:none; }
+    .who { border:0; padding:6px 10px; margin-left:auto; display:flex; gap:8px; align-items:center; } .who .me div, .who .nm, .who .rl { display:none; } .who .acts { margin-top:0; } .who .acts button { flex:0 0 auto; padding:5px 8px; }
     nav.menu { order:3; flex:0 0 100%; display:flex; gap:4px; overflow-x:auto; padding:0 10px 8px; scrollbar-width:none; }
     nav.menu::-webkit-scrollbar { display:none; }
     .grp { display:none; }

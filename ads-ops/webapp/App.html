@@ -64,7 +64,7 @@ function go(tab) { S.tab = tab; render(); loadTab(); }
 function render() {
   var app = $('#app');
   if (!S.user) { app.innerHTML = viewLogin(); return; }
-  var tabs = [['live', 'Camp đang chạy'], ['orders', 'Pipeline camp'], ['edit', S.order && S.order.id ? 'Sửa camp ' + S.order.id : '+ Lên camp'],
+  var tabs = [['live', 'Camp đang chạy'], ['orders', 'Camp AI Lên'], ['edit', S.order && S.order.id ? 'Sửa camp ' + S.order.id : '+ Lên camp'],
               ['dash', 'Báo cáo'], ['library', 'Tệp & Form'], ['log', 'Lịch sử']];
   if (role('admin')) tabs.push(['users', 'Team'], ['settings', 'Cài đặt']);
   var html = '<header><h1>AI Agent Ads</h1><nav>' + tabs.map(function (t) {
@@ -126,7 +126,7 @@ function viewLive() {
 
 /* ================= Orders ================= */
 function viewOrders() {
-  var h = '<h2>Pipeline camp' + (role('runner') ? '<span class="right bar"><button class="btn sm" data-act="syncOrders">Đồng bộ trạng thái từ Meta</button><button class="btn p sm" data-act="newOrder">+ Lên camp mới</button></span>' : '') + '</h2>' +
+  var h = '<h2>Camp AI Lên' + (role('runner') ? '<span class="right bar"><button class="btn sm" data-act="syncOrders">Đồng bộ trạng thái từ Meta</button><button class="btn p sm" data-act="newOrder">+ Lên camp mới</button></span>' : '') + '</h2>' +
     '<p class="muted" style="margin-top:-8px">Trạng thái camp tự đồng bộ với Ads Manager mỗi giờ (bật/tạm dừng/xóa ngoài app, quảng cáo bị từ chối).</p>';
   if (!S.orders.length) return h + '<p class="muted">Chưa có camp nào.</p>';
   h += '<div class="tbl"><table><tr><th>Mã</th><th>Chiến dịch</th><th>Trạng thái</th><th class="n">Ngân sách/ngày</th><th class="n">Nhóm</th><th class="n">QC trên Meta</th><th>Người tạo</th><th>Cập nhật</th><th>Thao tác</th></tr>';
@@ -211,7 +211,7 @@ function chip(path, value, label, on, type, locked, extra) {
 }
 
 function viewEditor() {
-  if (!S.order) { if (!role('runner')) return '<p class="muted">Chọn một camp ở tab "Pipeline camp" để điền phần quảng cáo.</p>'; S.order = blankOrder(); }
+  if (!S.order) { if (!role('runner')) return '<p class="muted">Chọn một camp ở tab "Camp AI Lên" để điền phần quảng cáo.</p>'; S.order = blankOrder(); }
   var o = S.order, c = o.campaign, L = lockedCD();
   var h = '<h2>' + (o.id ? 'Camp ' + esc(o.id) + ' ' + statusBadge(o.status) : 'Lên camp mới') +
     (o.clonedFrom ? ' <span class="muted">nhân bản từ ' + esc(o.clonedFrom) + '</span>' : '') +
@@ -657,7 +657,7 @@ document.addEventListener('click', function (e) {
       if (!confirm('Chốt camp để AI dựng trên Meta (tạm dừng, chưa tiêu tiền)?')) return;
       el.disabled = true;
       saveQueued().then(function (o) { return call('submitOrder', { id: o.id }); })
-        .then(function () { toast('Đã gửi. Theo dõi tiến trình ở tab "Pipeline camp".'); S.order = null; S.dirty = false; go('orders'); })
+        .then(function () { toast('Đã gửi. Theo dõi tiến trình ở tab "Camp AI Lên".'); S.order = null; S.dirty = false; go('orders'); })
         .catch(function () { el.disabled = false; });
     },
     newUser: function () { S.editUser = null; rerender(); },

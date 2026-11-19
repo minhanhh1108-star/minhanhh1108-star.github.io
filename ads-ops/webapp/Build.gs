@@ -32,7 +32,7 @@ function processQueue() {
           logAction_('Hệ thống', o.id, 'Dựng xong (tạm dừng)', o.meta.campaignId, 'OK', countMetaAds(o) + ' quảng cáo');
           notify_(o, 'Đã dựng xong: ' + o.campaign.name,
             'Chiến dịch "' + o.campaign.name + '" đã được tạo trên Meta ở trạng thái TẠM DỪNG.\n' +
-            'ID chiến dịch: ' + o.meta.campaignId + '\nVào app, tab "Pipeline camp" để kiểm tra và bấm "Bật chạy".');
+            'ID chiến dịch: ' + o.meta.campaignId + '\nVào app, tab "Camp AI Lên" để kiểm tra và bấm "Bật chạy".');
         } else {
           writeOrder_(o);
         }

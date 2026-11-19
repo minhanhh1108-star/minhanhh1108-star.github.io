@@ -199,7 +199,7 @@ function canQc_(u, s) {
 
 function sendToQc_(user, p) {
   var o = getOrder_(p.id);
-  if (o.status !== STATUS.DRAFT) throw new Error('Chỉ gửi QC được đơn ở trạng thái Nháp.');
+  if (o.status !== STATUS.DRAFT) throw new Error('Chỉ gửi QC được camp ở trạng thái Nháp.');
   var v = validateOrder(o, loadContext_());
   if (v.errors.length) throw new Error('Còn lỗi cấu hình cần sửa: ' + v.errors.map(function (e) { return e.msg; }).join(' · '));
   var q = qcOrder(o);
@@ -212,26 +212,26 @@ function sendToQc_(user, p) {
   o.status = STATUS.QC_PENDING;
   writeOrder_(o);
   logAction_(user.email, o.id, 'Gửi QC', '', 'OK', q.decision + ' · ' + q.risk + ' · điểm ' + q.score);
-  notify_(o, 'Chờ QC: ' + o.campaign.name, user.email + ' gửi đơn ' + o.id + ' chờ QC. Kết quả soát tự động: ' + q.decision + ' (' + q.risk + ', điểm ' + q.score + ').', qcReviewers_(getSettings_()));
+  notify_(o, 'Chờ QC: ' + o.campaign.name, user.email + ' gửi camp ' + o.id + ' chờ QC. Kết quả soát tự động: ' + q.decision + ' (' + q.risk + ', điểm ' + q.score + ').', qcReviewers_(getSettings_()));
   return o;
 }
 
 function qcDecide_(user, p) {
   if (!canQc_(user, getSettings_())) throw new Error('Bạn không có quyền duyệt QC.');
   var o = getOrder_(p.id);
-  if (o.status !== STATUS.QC_PENDING) throw new Error('Đơn không ở trạng thái Chờ QC.');
+  if (o.status !== STATUS.QC_PENDING) throw new Error('Camp không ở trạng thái Chờ QC.');
   var note = String(p.note || '').trim();
   o.qc = o.qc || {};
   o.qc.notes = (o.qc.notes || []).concat([{ by: user.email, at: nowIso_(), decision: p.approve ? 'Duyệt' : 'Trả về', note: note }]);
   if (p.approve) {
-    if (o.qc.result && o.qc.result.decision === 'HUMAN_REVIEW' && !note) throw new Error('Đơn có mục ORANGE (cần người duyệt): ghi chú lý do duyệt.');
+    if (o.qc.result && o.qc.result.decision === 'HUMAN_REVIEW' && !note) throw new Error('Camp có mục ORANGE (cần người duyệt): ghi chú lý do duyệt.');
     o.status = STATUS.QC_OK; o.qc.approvedBy = user.email; o.qc.approvedAt = nowIso_();
   } else {
-    if (!note) throw new Error('Ghi rõ lý do trả về để người làm đơn sửa.');
+    if (!note) throw new Error('Ghi rõ lý do trả về để người lên camp sửa.');
     o.status = STATUS.DRAFT;
   }
   writeOrder_(o);
   logAction_(user.email, o.id, p.approve ? 'QC duyệt' : 'QC trả về', '', 'OK', note);
-  notify_(o, (p.approve ? 'QC đã duyệt: ' : 'QC trả về: ') + o.campaign.name, (note || '') + '\nĐơn ' + o.id, [o.createdBy, o.qc.sentBy]);
+  notify_(o, (p.approve ? 'QC đã duyệt: ' : 'QC trả về: ') + o.campaign.name, (note || '') + '\nCamp ' + o.id, [o.createdBy, o.qc.sentBy]);
   return o;
 }

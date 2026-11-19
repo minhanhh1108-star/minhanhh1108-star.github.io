@@ -32,7 +32,7 @@ function processQueue() {
           logAction_('Hệ thống', o.id, 'Dựng xong (tạm dừng)', o.meta.campaignId, 'OK', countMetaAds(o) + ' quảng cáo');
           notify_(o, 'Đã dựng xong: ' + o.campaign.name,
             'Chiến dịch "' + o.campaign.name + '" đã được tạo trên Meta ở trạng thái TẠM DỪNG.\n' +
-            'ID chiến dịch: ' + o.meta.campaignId + '\nVào app, tab "Đơn lên camp" để kiểm tra và bấm "Bật chạy".');
+            'ID chiến dịch: ' + o.meta.campaignId + '\nVào app, tab "Pipeline camp" để kiểm tra và bấm "Bật chạy".');
         } else {
           writeOrder_(o);
         }
@@ -42,7 +42,7 @@ function processQueue() {
         writeOrder_(o);
         logAction_('Hệ thống', o.id, 'Dựng camp lỗi', o.meta && o.meta.campaignId || '', 'Lỗi', o.build.error);
         notify_(o, 'Lỗi khi dựng: ' + (o.campaign && o.campaign.name), 'Lỗi: ' + o.build.error +
-          '\nCác phần đã tạo trên Meta vẫn ở trạng thái tạm dừng. Sửa đơn rồi bấm "Chạy lại".');
+          '\nCác phần đã tạo trên Meta vẫn ở trạng thái tạm dừng. Sửa camp rồi bấm "Chạy lại".');
       }
     }
   } finally { lock.releaseLock(); }
@@ -314,7 +314,7 @@ function uploadVideoChunked_(accId, fileId, size, name, md, timeLeft) {
 function activateOrder_(user, p) {
   if (!canActivate_(user, getSettings_())) throw new Error('Bạn chưa được giao quyền bật chạy.');
   var o = getOrder_(p.id);
-  if ([STATUS.BUILT, STATUS.PAUSED].indexOf(o.status) < 0) throw new Error('Chỉ bật được đơn đã dựng hoặc đang tạm dừng.');
+  if ([STATUS.BUILT, STATUS.PAUSED].indexOf(o.status) < 0) throw new Error('Chỉ bật được camp đã dựng hoặc đang tạm dừng.');
   if (normName_(p.confirmName) !== normName_(o.campaign.name)) throw new Error('Tên xác nhận không khớp tên chiến dịch.');
   var m = o.meta;
   Object.keys(m.adIds).forEach(function (k) { gpost(m.adIds[k], { status: 'ACTIVE' }); });
@@ -331,7 +331,7 @@ function activateOrder_(user, p) {
 function pauseOrder_(user, p) {
   if (!canActivate_(user, getSettings_())) throw new Error('Bạn chưa được giao quyền tạm dừng.');
   var o = getOrder_(p.id);
-  if (o.status !== STATUS.ACTIVE) throw new Error('Đơn không ở trạng thái đang chạy.');
+  if (o.status !== STATUS.ACTIVE) throw new Error('Camp không ở trạng thái đang chạy.');
   gpost(o.meta.campaignId, { status: 'PAUSED' });
   o.status = STATUS.PAUSED;
   writeOrder_(o);

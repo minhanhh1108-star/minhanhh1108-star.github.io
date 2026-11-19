@@ -7,12 +7,12 @@ App tự dựng camp trên Meta ở trạng thái **tạm dừng**; chỉ ngư�
 
 | Tab | Dùng để |
 |---|---|
-| Đang chạy | Camp đang chạy trên các tài khoản, số liệu 7 ngày, mở ra xem nhóm và quảng cáo. Nhân bản thành đơn mới, tạm dừng |
-| Đơn lên camp | Danh sách đơn theo trạng thái: Nháp → Chờ dựng → Đang dựng → Đã dựng (tạm dừng) → Đang chạy / Lỗi |
-| + Tạo đơn | ① Chiến dịch → ② Nhóm (nhiều nhóm) → ③ Quảng cáo (dùng chung cho nhiều nhóm) → ④ Kiểm tra. Mỗi phần bấm "Xong" để thu gọn |
-| Thư viện | Tệp đối tượng và biểu mẫu thật, đồng bộ từ Meta |
-| Nhật ký | Mọi thao tác: ai, lúc nào, ID trên Meta, lỗi |
-| Thành viên, Cài đặt | Chỉ quản trị: thêm người, phân quyền, giới hạn ngân sách, ngành và mục tiêu chi phí/lead |
+| Camp đang chạy | Camp đang chạy trên các tài khoản, số liệu 7 ngày, mở ra xem nhóm và quảng cáo. Nhân bản thành camp mới, tạm dừng |
+| Pipeline camp | Mọi camp theo trạng thái: Nháp → Chờ QC → Đã QC → Chờ dựng → Đang dựng → Đã dựng (tạm dừng) → Đang chạy / Lỗi |
+| + Lên camp | ① Chiến dịch → ② Nhóm (nhiều nhóm) → ③ Quảng cáo (dùng chung cho nhiều nhóm) → ④ Kiểm tra. Mỗi phần bấm "Xong" để thu gọn |
+| Tệp & Form | Tệp đối tượng và biểu mẫu thật, đồng bộ từ Meta |
+| Lịch sử | Mọi thao tác: ai, lúc nào, ID trên Meta, lỗi |
+| Team, Cài đặt | Chỉ quản trị: thêm người, phân quyền, giới hạn ngân sách, ngành và mục tiêu chi phí/lead |
 
 ## Vai trò
 
@@ -48,7 +48,7 @@ Mọi người đăng nhập bằng **email + mã PIN** do quản trị cấp. L
    - Thực thi với tư cách: **Tôi**
    - Người có quyền truy cập: **Bất kỳ ai có Tài khoản Google**
    Sao chép đường link `/exec` và gửi cho nhóm.
-7. Trong app, tab **Thành viên**: thêm từng người (email Gmail, vai trò, mã PIN), gửi mã PIN riêng cho họ.
+7. Trong app, tab **Team**: thêm từng người (email Gmail, vai trò, mã PIN), gửi mã PIN riêng cho họ.
    Người được bật chạy: chọn vai trò "Người duyệt" và tích "Được bấm Bật chạy".
 8. Video trên Google Drive phải được **chia sẻ cho email chủ app** (quyền xem), vì app chạy dưới quyền chủ app.
 
@@ -58,7 +58,7 @@ Sửa code sau này: dán bản mới → **Triển khai → Quản lý bản tr
 
 ## Luồng lên camp
 
-1. Tạo đơn mới, hoặc **Nhân bản** một camp đang chạy / một đơn cũ rồi sửa.
+1. Bấm **+ Lên camp**, hoặc **Nhân bản** một camp đang chạy / một camp cũ rồi sửa.
 2. Điền ① ② ③, bấm "Kiểm tra lại". Lỗi ⛔ phải sửa; cảnh báo ⚠ thì cân nhắc.
 3. **Hoàn thành** → trình chạy nền dựng theo thứ tự: tải video/ảnh từ Drive (video lớn tải theo từng đoạn, chạy tiếp qua nhiều phút) → chiến dịch → nhóm → mẫu quảng cáo → quảng cáo. Tất cả **tạm dừng**.
 4. Email báo "Đã dựng xong". Người duyệt kiểm tra (trong app hoặc Ads Manager) → **Bật chạy** → gõ đúng tên chiến dịch để xác nhận.

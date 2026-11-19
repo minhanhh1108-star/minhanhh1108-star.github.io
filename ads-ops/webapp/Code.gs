@@ -411,7 +411,7 @@ function listOrders_() {
 
 function getOrder_(id) {
   var r = rows_('Orders').filter(function (x) { return x.id === id; })[0];
-  if (!r) throw new Error('Không tìm thấy đơn ' + id);
+  if (!r) throw new Error('Không tìm thấy camp ' + id);
   var o = unpackJson_(r);
   o.status = r.status;
   return o;
@@ -435,11 +435,11 @@ function saveOrder_(user, p) {
   try {
     var o;
     if (!incoming.id) {
-      if (user.role === 'content') throw new Error('Người viết nội dung không tạo được đơn mới.');
+      if (user.role === 'content') throw new Error('Người viết nội dung không tạo được camp mới.');
       o = { id: newOrderId_(), status: STATUS.DRAFT, createdBy: user.email, createdAt: nowIso_(), meta: {}, build: {} };
     } else {
       o = getOrder_(incoming.id);
-      if (EDITABLE.indexOf(o.status) < 0) throw new Error('Đơn đang ở trạng thái "' + o.status + '", không sửa được.');
+      if (EDITABLE.indexOf(o.status) < 0) throw new Error('Camp đang ở trạng thái "' + o.status + '", không sửa được.');
     }
     if (user.role === 'content') {
       // content writers may only touch the ads section
@@ -453,7 +453,7 @@ function saveOrder_(user, p) {
     if (o.status === STATUS.ERROR) { o.status = STATUS.DRAFT; if (o.build) o.build.error = ''; }
     if (o.status === STATUS.QC_OK) { o.status = STATUS.DRAFT; if (o.qc) o.qc.approvedBy = ''; } // edited after QC → QC again
     writeOrder_(o);
-    logAction_(user.email, o.id, 'Lưu đơn', '', 'OK', o.campaign && o.campaign.name || '');
+    logAction_(user.email, o.id, 'Lưu camp', '', 'OK', o.campaign && o.campaign.name || '');
     return o;
   } finally { lock.releaseLock(); }
 }
@@ -477,16 +477,16 @@ function cloneOrder_(user, p) {
 function deleteOrder_(user, p) {
   var o = getOrder_(p.id);
   if ([STATUS.DRAFT, STATUS.ERROR, STATUS.QC_OK].indexOf(o.status) < 0 || (o.meta && o.meta.campaignId)) {
-    throw new Error('Chỉ xóa được đơn nháp chưa dựng trên Meta.');
+    throw new Error('Chỉ xóa được camp nháp chưa dựng trên Meta.');
   }
   deleteRow_('Orders', 'id', o.id);
-  logAction_(user.email, o.id, 'Xóa đơn', '', 'OK', '');
+  logAction_(user.email, o.id, 'Xóa camp', '', 'OK', '');
   return true;
 }
 
 function submitOrder_(user, p) {
   var o = getOrder_(p.id);
-  if (o.status !== STATUS.QC_OK) throw new Error('Đơn phải được QC duyệt trước (trạng thái hiện tại: ' + o.status + ').');
+  if (o.status !== STATUS.QC_OK) throw new Error('Camp phải được QC duyệt trước (trạng thái hiện tại: ' + o.status + ').');
   var v = validateOrder(o, loadContext_());
   if (v.errors.length) throw new Error('Còn lỗi cần sửa: ' + v.errors.map(function (e) { return e.msg; }).join(' · '));
   o.status = STATUS.QUEUED;
@@ -494,13 +494,13 @@ function submitOrder_(user, p) {
   o.submittedAt = nowIso_();
   o.build = { step: 'campaign', log: [], error: '' };
   writeOrder_(o);
-  logAction_(user.email, o.id, 'Hoàn thành đơn → chờ dựng', '', 'OK', v.warnings.map(function (w) { return w.msg; }).join(' · '));
+  logAction_(user.email, o.id, 'Chốt camp → chờ dựng', '', 'OK', v.warnings.map(function (w) { return w.msg; }).join(' · '));
   return o;
 }
 
 function retryOrder_(user, p) {
   var o = getOrder_(p.id);
-  if (o.status !== STATUS.ERROR) throw new Error('Chỉ chạy lại đơn bị lỗi.');
+  if (o.status !== STATUS.ERROR) throw new Error('Chỉ chạy lại camp bị lỗi.');
   o.status = STATUS.QUEUED;
   o.build.error = '';
   writeOrder_(o);

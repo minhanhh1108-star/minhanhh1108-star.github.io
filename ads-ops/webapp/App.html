@@ -64,9 +64,9 @@ function go(tab) { S.tab = tab; render(); loadTab(); }
 function render() {
   var app = $('#app');
   if (!S.user) { app.innerHTML = viewLogin(); return; }
-  var tabs = [['live', 'Đang chạy'], ['orders', 'Đơn lên camp'], ['edit', S.order && S.order.id ? 'Sửa đơn ' + S.order.id : '+ Tạo đơn'],
-              ['dash', 'Dashboard'], ['library', 'Thư viện'], ['log', 'Nhật ký']];
-  if (role('admin')) tabs.push(['users', 'Thành viên'], ['settings', 'Cài đặt']);
+  var tabs = [['live', 'Camp đang chạy'], ['orders', 'Pipeline camp'], ['edit', S.order && S.order.id ? 'Sửa camp ' + S.order.id : '+ Lên camp'],
+              ['dash', 'Báo cáo'], ['library', 'Tệp & Form'], ['log', 'Lịch sử']];
+  if (role('admin')) tabs.push(['users', 'Team'], ['settings', 'Cài đặt']);
   var html = '<header><h1>Lên camp Meta</h1><nav>' + tabs.map(function (t) {
     return '<button data-act="tab" data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'active' : '') + '">' + esc(t[1]) + '</button>';
   }).join('') + '</nav>' + (dashList()[0] ? '<a class="btn sm" href="' + esc(dashList()[0].url) + '" target="_blank" rel="noopener" style="background:#fff;color:var(--blue)">📊 Mở báo cáo</a>' : '') + '<div class="who">' + esc(S.user.name || S.user.email) + '<br><span>' + esc(S.user.roleLabel) +
@@ -106,7 +106,7 @@ function viewLive() {
     h += '<tr class="lvl1"><td><a data-act="toggle" data-key="live_' + c.id + '" style="cursor:pointer">' + (open ? '▾ ' : '▸ ') + esc(c.name) + '</a></td><td>' + esc(c.accountName) +
       '</td><td class="n">' + money(budget) + '</td><td class="n">' + money(c.spend) + '</td><td class="n">' + c.leads + '</td><td class="n"><span class="badge ' + cls + '">' +
       (cpl == null ? (c.objective === 'OUTCOME_LEADS' ? '0 lead' : 'Tương tác') : money(cpl)) + '</span></td><td class="n">' + (tg ? money(tg) : '') + '</td><td></td><td class="bar">' +
-      (role('runner') ? '<button class="btn sm" data-act="cloneLive" data-id="' + c.id + '">Nhân bản thành đơn</button>' : '') +
+      (role('runner') ? '<button class="btn sm" data-act="cloneLive" data-id="' + c.id + '">Nhân bản camp</button>' : '') +
       (S.user.canActivate ? '<button class="btn sm danger" data-act="pauseLive" data-id="' + c.id + '" data-name="' + esc(c.name) + '">Tạm dừng</button>' : '') + '</td></tr>';
     if (!open) return;
     c.adsets.forEach(function (g) {
@@ -126,13 +126,13 @@ function viewLive() {
 
 /* ================= Orders ================= */
 function viewOrders() {
-  var h = '<h2>Đơn lên camp' + (role('runner') ? '<span class="right bar"><button class="btn sm" data-act="syncOrders">Đồng bộ trạng thái từ Meta</button><button class="btn p sm" data-act="newOrder">+ Tạo đơn mới</button></span>' : '') + '</h2>' +
-    '<p class="muted" style="margin-top:-8px">Trạng thái đơn tự đồng bộ với Ads Manager mỗi giờ (bật/tạm dừng/xóa ngoài app, quảng cáo bị từ chối).</p>';
-  if (!S.orders.length) return h + '<p class="muted">Chưa có đơn nào.</p>';
+  var h = '<h2>Pipeline camp' + (role('runner') ? '<span class="right bar"><button class="btn sm" data-act="syncOrders">Đồng bộ trạng thái từ Meta</button><button class="btn p sm" data-act="newOrder">+ Lên camp mới</button></span>' : '') + '</h2>' +
+    '<p class="muted" style="margin-top:-8px">Trạng thái camp tự đồng bộ với Ads Manager mỗi giờ (bật/tạm dừng/xóa ngoài app, quảng cáo bị từ chối).</p>';
+  if (!S.orders.length) return h + '<p class="muted">Chưa có camp nào.</p>';
   h += '<div class="tbl"><table><tr><th>Mã</th><th>Chiến dịch</th><th>Trạng thái</th><th class="n">Ngân sách/ngày</th><th class="n">Nhóm</th><th class="n">QC trên Meta</th><th>Người tạo</th><th>Cập nhật</th><th>Thao tác</th></tr>';
   S.orders.forEach(function (o) {
     var b = [];
-    if (o.status === 'Chờ QC' && S.canQc) b.push('<button class="btn sm go" data-act="editOrder" data-id="' + o.id + '">QC đơn</button>');
+    if (o.status === 'Chờ QC' && S.canQc) b.push('<button class="btn sm go" data-act="editOrder" data-id="' + o.id + '">Duyệt QC</button>');
     else if (['Nháp', 'Lỗi', 'Đã QC'].indexOf(o.status) >= 0) b.push('<button class="btn sm" data-act="editOrder" data-id="' + o.id + '">Sửa</button>');
     else b.push('<button class="btn sm" data-act="editOrder" data-id="' + o.id + '">Xem</button>');
     if (role('runner')) b.push('<button class="btn sm" data-act="cloneOrder" data-id="' + o.id + '">Nhân bản</button>');
@@ -140,7 +140,7 @@ function viewOrders() {
     if (['Đã dựng (tạm dừng)', 'Tạm dừng'].indexOf(o.status) >= 0 && S.user.canActivate) b.push('<button class="btn sm go" data-act="activate" data-id="' + o.id + '" data-name="' + esc(o.name) + '">Bật chạy</button>');
     if (o.status === 'Đang chạy' && S.user.canActivate) b.push('<button class="btn sm danger" data-act="pauseOrder" data-id="' + o.id + '">Tạm dừng</button>');
     if (['Nháp', 'Lỗi', 'Đã QC'].indexOf(o.status) >= 0 && !o.campaignId && role('runner')) b.push('<button class="btn sm danger" data-act="deleteOrder" data-id="' + o.id + '">Xóa</button>');
-    b.push('<button class="btn sm" data-act="orderLog" data-id="' + o.id + '">Nhật ký</button>');
+    b.push('<button class="btn sm" data-act="orderLog" data-id="' + o.id + '">Lịch sử</button>');
     h += '<tr><td>' + esc(o.id) + '</td><td>' + esc(o.name) + (o.error ? '<div class="muted" style="color:var(--badT)">' + esc(o.error) + '</div>' : '') + (o.metaNote ? '<div class="muted" style="color:var(--warnT)">⚠ ' + esc(o.metaNote) + '</div>' : '') + qcLine(o) +
       '</td><td>' + statusBadge(o.status) + (o.status === 'Đang dựng' || o.status === 'Chờ dựng' ? ' <span class="spinner"></span>' : '') +
       '</td><td class="n">' + money(o.budget) + '</td><td class="n">' + o.adsets + '</td><td class="n">' + o.ads + '</td><td>' + esc(o.createdBy) +
@@ -149,7 +149,7 @@ function viewOrders() {
   h += '</table></div>';
   if (S.orders.some(function (o) { return o.status === 'Đang dựng' || o.status === 'Chờ dựng'; })) {
     clearTimeout(S.poll); S.poll = setTimeout(function () { if (S.tab === 'orders') loadTab(); }, 20000);
-    h += '<p class="muted">Có đơn đang dựng, trang tự cập nhật mỗi 20 giây.</p>';
+    h += '<p class="muted">Có camp đang dựng, trang tự cập nhật mỗi 20 giây.</p>';
   }
   return h;
 }
@@ -179,7 +179,7 @@ function qcPanel(o) {
   if (notes.length) h += '<details style="margin-top:8px"' + (o.status === 'Nháp' ? ' open' : '') + '><summary>Lịch sử QC</summary><ul class="msgs">' + notes.slice().reverse().map(function (n) {
     return '<li class="w" style="background:#f8fafc;color:#374151">' + esc(n.at.replace('T', ' ')) + ' · <b>' + esc(n.decision) + '</b> bởi ' + esc(n.by) + (n.note ? ': ' + esc(n.note) : '') + '</li>'; }).join('') + '</ul></details>';
   if (o.status === 'Chờ QC' && S.canQc) {
-    h += '<div style="margin-top:10px"><textarea id="qc-note" placeholder="Ghi chú QC (bắt buộc khi trả về, hoặc khi duyệt đơn có mục 🟠)" style="min-height:60px"></textarea>' +
+    h += '<div style="margin-top:10px"><textarea id="qc-note" placeholder="Ghi chú QC (bắt buộc khi trả về, hoặc khi duyệt camp có mục 🟠)" style="min-height:60px"></textarea>' +
       '<div class="bar" style="margin-top:6px"><button class="btn go" data-act="qcApprove">✓ Duyệt QC</button><button class="btn danger" data-act="qcReturn">✗ Trả về sửa</button></div></div>';
   }
   return h + '</div></div>';
@@ -211,14 +211,14 @@ function chip(path, value, label, on, type, locked, extra) {
 }
 
 function viewEditor() {
-  if (!S.order) { if (!role('runner')) return '<p class="muted">Chọn một đơn ở tab "Đơn lên camp" để điền phần quảng cáo.</p>'; S.order = blankOrder(); }
+  if (!S.order) { if (!role('runner')) return '<p class="muted">Chọn một camp ở tab "Pipeline camp" để điền phần quảng cáo.</p>'; S.order = blankOrder(); }
   var o = S.order, c = o.campaign, L = lockedCD();
-  var h = '<h2>' + (o.id ? 'Đơn ' + esc(o.id) + ' ' + statusBadge(o.status) : 'Tạo đơn mới') +
+  var h = '<h2>' + (o.id ? 'Camp ' + esc(o.id) + ' ' + statusBadge(o.status) : 'Lên camp mới') +
     (o.clonedFrom ? ' <span class="muted">nhân bản từ ' + esc(o.clonedFrom) + '</span>' : '') +
     '<span class="right bar"><button class="btn sm" data-act="expandAll">Mở tất cả</button><button class="btn sm" data-act="collapseAll">Thu gọn tất cả</button></span></h2>';
-  if (o.status === 'Chờ QC') h += '<p class="muted">Đơn đang chờ QC, chỉ xem.' + (S.canQc ? ' Kéo xuống mục ④ để duyệt hoặc trả về.' : '') + '</p>';
-  else if (o.status === 'Đã QC') h += '<p class="muted">Đơn đã qua QC. Nếu sửa và lưu, đơn quay về Nháp và phải QC lại.</p>';
-  else if (!editable()) h += '<p class="muted">Đơn đã gửi đi, chỉ xem. Muốn thay đổi hãy "Nhân bản" thành đơn mới.</p>';
+  if (o.status === 'Chờ QC') h += '<p class="muted">Camp đang chờ QC, chỉ xem.' + (S.canQc ? ' Kéo xuống mục ④ để duyệt hoặc trả về.' : '') + '</p>';
+  else if (o.status === 'Đã QC') h += '<p class="muted">Camp đã qua QC. Nếu sửa và lưu, camp quay về Nháp và phải QC lại.</p>';
+  else if (!editable()) h += '<p class="muted">Camp đã chốt, chỉ xem. Muốn thay đổi hãy "Nhân bản" thành camp mới.</p>';
   h += sectionCampaign(o, L) + sectionAdsets(o, L) + sectionAds(o) + sectionReview(o);
   return h;
 }
@@ -384,8 +384,8 @@ function sectionReview(o) {
   var b = '<div class="bar"><button class="btn" data-act="check">Kiểm tra lại</button>' +
     (editable() ? '<button class="btn p" data-act="save">Lưu nháp</button>' : '') +
     ((o.status !== 'Đã QC' || S.dirty) && editable() && role('runner') ? '<button class="btn go" data-act="sendQc"' + (c && !c.errors.length && !(S.qc && S.qc.decision === 'REJECT') ? '' : ' disabled') + '>Gửi QC ▶</button>' : '') +
-    (o.status === 'Đã QC' && !S.dirty && role('runner') ? '<button class="btn go" data-act="submit"' + (c && !c.errors.length ? '' : ' disabled') + '>Hoàn thành ▶ gửi dựng camp</button>' : '') + '</div>' +
-    '<p class="muted" style="margin:6px 0 0">Quy trình: Nháp → Gửi QC → QC duyệt → Hoàn thành → AI dựng camp (tạm dừng) → Người duyệt bật chạy.</p>';
+    (o.status === 'Đã QC' && !S.dirty && role('runner') ? '<button class="btn go" data-act="submit"' + (c && !c.errors.length ? '' : ' disabled') + '>Chốt camp ▶ AI dựng trên Meta</button>' : '') + '</div>' +
+    '<p class="muted" style="margin:6px 0 0">Quy trình: Nháp → Gửi QC → QC duyệt → Chốt camp → AI dựng (tạm dừng) → Người duyệt bật chạy.</p>';
   if (c) {
     var sm = c.summary;
     b += '<div class="stat"><div><span class="muted">Nhóm</span><b>' + sm.adsets + '</b></div><div><span class="muted">Mẫu quảng cáo</span><b>' + sm.adTemplates + '</b></div>' +
@@ -394,7 +394,7 @@ function sectionReview(o) {
     b += '<ul class="msgs">' + c.errors.map(function (e) { return '<li class="e">⛔ ' + esc(e.msg) + '</li>'; }).join('') +
       c.warnings.map(function (e) { return '<li class="w">⚠ ' + esc(e.msg) + '</li>'; }).join('') +
       (!c.errors.length && !c.warnings.length ? '<li class="w" style="background:var(--ok);color:var(--okT)">✅ Không có lỗi.</li>' : '') + '</ul>';
-  } else b += '<p class="muted">Bấm "Kiểm tra lại" để soát đơn trước khi hoàn thành.</p>';
+  } else b += '<p class="muted">Bấm "Kiểm tra lại" để soát camp trước khi chốt.</p>';
   if (o.build && o.build.log && o.build.log.length) {
     b += '<details style="margin-top:10px"><summary>Tiến trình dựng camp</summary><ul class="msgs">' + o.build.log.slice().reverse().map(function (l) {
       return '<li class="w" style="background:#f8fafc;color:#374151">' + esc(l.t.replace('T', ' ')) + ' · ' + esc(l.a) + ' ' + esc(l.d) + '</li>'; }).join('') + '</ul></details>';
@@ -407,7 +407,7 @@ function sectionReview(o) {
 /* ================= Library / Log / Users / Settings ================= */
 function viewLibrary() {
   var f = S.libFilter, q = f.q.toLowerCase();
-  var h = '<h2>Thư viện <span class="muted">cập nhật ' + esc(S.library.updatedAt || '—') + '</span>' +
+  var h = '<h2>Tệp đối tượng & Form <span class="muted">cập nhật ' + esc(S.library.updatedAt || '—') + '</span>' +
     (role('runner') ? '<button class="btn sm right" data-act="syncLib">Đồng bộ từ Meta</button>' : '') + '</h2>';
   h += '<div class="bar" style="margin-bottom:10px"><select data-libacc>' + '<option value="">Tất cả tài khoản</option>' + S.settings.accounts.map(function (a) {
     return '<option value="' + a.id + '"' + (f.acc === a.id ? ' selected' : '') + '>' + esc(a.name) + '</option>'; }).join('') +
@@ -424,15 +424,15 @@ function viewLibrary() {
 }
 
 function viewLog() {
-  var h = '<h2>Nhật ký <input type="text" placeholder="Lọc theo mã đơn" data-logf value="' + esc(S.logFilter) + '" style="max-width:220px"><button class="btn sm" data-act="reloadLog">Lọc</button></h2>';
-  return h + '<div class="tbl"><table><tr><th>Thời gian</th><th>Người</th><th>Đơn</th><th>Hành động</th><th>ID Meta</th><th>Kết quả</th><th>Chi tiết</th></tr>' + S.log.map(function (l) {
+  var h = '<h2>Lịch sử thao tác <input type="text" placeholder="Lọc theo mã camp" data-logf value="' + esc(S.logFilter) + '" style="max-width:220px"><button class="btn sm" data-act="reloadLog">Lọc</button></h2>';
+  return h + '<div class="tbl"><table><tr><th>Thời gian</th><th>Người</th><th>Camp</th><th>Hành động</th><th>ID Meta</th><th>Kết quả</th><th>Chi tiết</th></tr>' + S.log.map(function (l) {
     return '<tr><td>' + esc(l.time) + '</td><td>' + esc(l.user) + '</td><td>' + esc(l.orderId) + '</td><td>' + esc(l.action) + '</td><td>' + esc(l.objectId) + '</td><td>' +
       (l.result === 'OK' ? '<span class="badge b-ok">OK</span>' : '<span class="badge b-bad">' + esc(l.result) + '</span>') + '</td><td class="muted">' + esc(l.detail) + '</td></tr>'; }).join('') + '</table></div>';
 }
 
 function viewUsers() {
   var u = S.editUser || { email: '', name: '', role: 'runner', pin: '', active: true, approver: false, isNew: true };
-  var h = '<h2>Thành viên</h2><div class="card"><div class="hd"><span class="ttl">' + (u.isNew ? 'Thêm thành viên' : 'Sửa ' + esc(u.email)) + '</span></div><div class="bd">' +
+  var h = '<h2>Team</h2><div class="card"><div class="hd"><span class="ttl">' + (u.isNew ? 'Thêm thành viên' : 'Sửa ' + esc(u.email)) + '</span></div><div class="bd">' +
     '<div class="row"><div class="fld"><label>Email (Gmail)</label><input type="email" id="u-email" value="' + esc(u.email) + '"' + (u.isNew ? '' : ' disabled') + '></div>' +
     '<div class="fld"><label>Tên</label><input type="text" id="u-name" value="' + esc(u.name) + '"></div>' +
     '<div class="fld"><label>' + (u.isNew ? 'Mã PIN (≥ 6 số)' : 'Đặt lại PIN (để trống = giữ)') + '</label><input type="text" id="u-pin" inputmode="numeric"></div></div>' +
@@ -458,9 +458,9 @@ function embedUrl(u) {
 
 function viewDashboard() {
   var list = dashList();
-  if (!list.length) return '<h2>Dashboard</h2><p class="muted">Chưa có báo cáo. ' + (role('admin') ? 'Thêm link Looker Studio ở tab Cài đặt.' : 'Nhờ quản trị viên thêm link ở tab Cài đặt.') + '</p>';
+  if (!list.length) return '<h2>Báo cáo</h2><p class="muted">Chưa có báo cáo. ' + (role('admin') ? 'Thêm link Looker Studio ở tab Cài đặt.' : 'Nhờ quản trị viên thêm link ở tab Cài đặt.') + '</p>';
   var cur = Math.min(S.dashIdx || 0, list.length - 1), d = list[cur];
-  return '<h2>Dashboard' + (list.length > 1 ? ' <span class="chips">' + list.map(function (x, i) {
+  return '<h2>Báo cáo' + (list.length > 1 ? ' <span class="chips">' + list.map(function (x, i) {
       return '<label class="chip' + (i === cur ? ' on' : '') + '" data-act="pickDash" data-i="' + i + '">' + esc(x.name || ('Báo cáo ' + (i + 1))) + '</label>'; }).join('') + '</span>' : ' <span class="muted">' + esc(d.name || '') + '</span>') +
     '<a class="btn sm right" href="' + esc(d.url) + '" target="_blank" rel="noopener">Mở trong tab mới ↗</a></h2>' +
     '<div class="card" style="overflow:hidden"><iframe src="' + esc(embedUrl(d.url)) + '" style="width:100%;height:calc(100vh - 170px);border:0;display:block" allowfullscreen ' +
@@ -587,7 +587,7 @@ document.addEventListener('click', function (e) {
       call('changePin', { oldPin: oldPin, newPin: newPin }).then(function () { toast('Đã đổi mã PIN'); });
     },
     tab: function () {
-      if (S.tab === 'edit' && S.dirty && el.dataset.tab !== 'edit' && !confirm('Đơn chưa lưu. Rời trang?')) return;
+      if (S.tab === 'edit' && S.dirty && el.dataset.tab !== 'edit' && !confirm('Camp chưa lưu. Rời trang?')) return;
       if (el.dataset.tab === 'edit' && !S.order && role('runner')) { S.order = blankOrder(); S.check = null; S.open = {}; }
       if (el.dataset.tab !== 'edit') S.dirty = false;
       go(el.dataset.tab);
@@ -599,8 +599,8 @@ document.addEventListener('click', function (e) {
     newOrder: function () { S.order = blankOrder(); S.check = null; S.qc = null; S.open = {}; S.dirty = false; go('edit'); },
     editOrder: function () { call('getOrder', { id: id }).then(function (o) { S.order = o; S.check = null; S.qc = null; S.open = { cd: false, nqc: true, qc: true }; o.adsets.forEach(function (g) { S.open['g_' + g.key] = false; }); o.ads.forEach(function (x) { S.open['a_' + x.key] = false; }); S.dirty = false; go('edit'); }); },
     cloneOrder: function () { call('cloneOrder', { id: id }).then(function (o) { toast('Đã tạo ' + o.id); S.order = o; S.check = null; S.qc = null; S.open = {}; go('edit'); }); },
-    cloneLive: function () { el.disabled = true; call('cloneLive', { campaignId: id }).then(function (o) { toast('Đã tạo đơn ' + o.id + ' từ camp đang chạy'); S.order = o; S.check = null; S.open = {}; go('edit'); }).catch(function () { el.disabled = false; }); },
-    deleteOrder: function () { if (confirm('Xóa đơn nháp ' + id + '?')) call('deleteOrder', { id: id }).then(loadTab); },
+    cloneLive: function () { el.disabled = true; call('cloneLive', { campaignId: id }).then(function (o) { toast('Đã tạo camp ' + o.id + ' từ camp đang chạy'); S.order = o; S.check = null; S.open = {}; go('edit'); }).catch(function () { el.disabled = false; }); },
+    deleteOrder: function () { if (confirm('Xóa camp nháp ' + id + '?')) call('deleteOrder', { id: id }).then(loadTab); },
     retry: function () { call('retryOrder', { id: id }).then(function () { toast('Đã đưa vào hàng chờ dựng lại'); loadTab(); }); },
     activate: function () {
       var name = prompt('BẬT CHẠY sẽ bắt đầu tiêu tiền thật.\nGõ chính xác tên chiến dịch để xác nhận:\n\n' + el.dataset.name);
@@ -613,7 +613,7 @@ document.addEventListener('click', function (e) {
     reloadLog: function () { loadTab(); },
     syncLive: function () { el.innerHTML = '<span class="spinner"></span> Đang đồng bộ…'; el.disabled = true; call('syncLive').then(function (d) { S.live = d; toast('Đã đồng bộ'); render(); }).catch(rerender); },
     syncOrders: function () { el.innerHTML = '<span class="spinner"></span> Đang đồng bộ…'; el.disabled = true;
-      call('syncOrders').then(function (r) { toast('Đã kiểm tra ' + r.checked + ' đơn' + (r.changed.length ? ', cập nhật ' + r.changed.join(', ') : ', không có thay đổi')); loadTab(); }).catch(rerender); },
+      call('syncOrders').then(function (r) { toast('Đã kiểm tra ' + r.checked + ' camp' + (r.changed.length ? ', cập nhật ' + r.changed.join(', ') : ', không có thay đổi')); loadTab(); }).catch(rerender); },
     syncLib: function () { el.innerHTML = '<span class="spinner"></span> Đang đồng bộ…'; el.disabled = true; call('syncLibrary').then(function (d) { S.library = d; toast('Đã đồng bộ thư viện'); render(); }).catch(rerender); },
     searchInterest: function () {
       var g = S.order.adsets[+el.dataset.i], q = S.open['ti_' + g.key] || '';
@@ -654,10 +654,10 @@ document.addEventListener('click', function (e) {
     qcReturn: function () { qcDecide(false); },
     qcRulesDefault: function () { call('qcRulesDefault').then(function (r) { $('#qc-json').value = JSON.stringify(r, null, 2); toast('Đã nạp bộ luật mặc định, sửa rồi bấm Lưu cài đặt'); }); },
     submit: function () {
-      if (!confirm('Gửi đơn để AI dựng camp trên Meta (tạm dừng, chưa tiêu tiền)?')) return;
+      if (!confirm('Chốt camp để AI dựng trên Meta (tạm dừng, chưa tiêu tiền)?')) return;
       el.disabled = true;
       saveQueued().then(function (o) { return call('submitOrder', { id: o.id }); })
-        .then(function () { toast('Đã gửi. Theo dõi tiến trình ở tab "Đơn lên camp".'); S.order = null; S.dirty = false; go('orders'); })
+        .then(function () { toast('Đã gửi. Theo dõi tiến trình ở tab "Pipeline camp".'); S.order = null; S.dirty = false; go('orders'); })
         .catch(function () { el.disabled = false; });
     },
     newUser: function () { S.editUser = null; rerender(); },
@@ -702,8 +702,8 @@ function runChecks() {
 
 function qcDecide(approve) {
   var note = ($('#qc-note') || {}).value || '';
-  if (!approve && !note.trim()) return toast('Ghi lý do trả về để người làm đơn biết cần sửa gì.', true);
-  if (approve && !confirm('Duyệt QC đơn ' + S.order.id + '?')) return;
+  if (!approve && !note.trim()) return toast('Ghi lý do trả về để người lên camp biết cần sửa gì.', true);
+  if (approve && !confirm('Duyệt QC camp ' + S.order.id + '?')) return;
   call('qcDecide', { id: S.order.id, approve: approve, note: note }).then(function () {
     toast(approve ? 'Đã duyệt QC' : 'Đã trả về'); S.order = null; go('orders'); });
 }

@@ -168,6 +168,7 @@ function syncLive() {
     var sh = sheet_('Live');
     rows_('Live').reverse().forEach(function (r) { if (!keep[r.campaignId]) sh.deleteRow(r._row); });
   } finally { lock.releaseLock(); }
+  try { syncOrderStatuses(); } catch (e) { Logger.log('Đồng bộ trạng thái đơn lỗi: ' + e.message); }
   return listLive_();
 }
 

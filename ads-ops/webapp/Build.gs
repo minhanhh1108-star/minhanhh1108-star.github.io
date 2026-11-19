@@ -343,3 +343,49 @@ function pauseOrder_(user, p) {
 function normName_(s) {
   return String(s || '').normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase();
 }
+
+/* =========================== Sync order status from Meta =========================== */
+
+/**
+ * Reads the real status of every built order's campaign (and its ads) from Meta and updates the order:
+ * ACTIVE → Đang chạy, PAUSED → Tạm dừng (or stays "Đã dựng" if never turned on), DELETED/ARCHIVED → Đã xóa trên Meta.
+ * Also records ads that Meta disapproved or flagged.
+ */
+function syncOrderStatuses() {
+  var orders = rows_('Orders').filter(function (r) {
+    return [STATUS.BUILT, STATUS.ACTIVE, STATUS.PAUSED, STATUS.REMOVED].indexOf(r.status) >= 0;
+  }).map(function (r) { return getOrder_(r.id); }).filter(function (o) { return o.meta && o.meta.campaignId; });
+  var changed = [];
+  for (var i = 0; i < orders.length; i += 40) {
+    var batch = orders.slice(i, i + 40);
+    var ids = [];
+    batch.forEach(function (o) { ids.push(o.meta.campaignId); Object.keys(o.meta.adIds || {}).forEach(function (k) { ids.push(o.meta.adIds[k]); }); });
+    var info = {};
+    for (var j = 0; j < ids.length; j += 45) {
+      var part = ids.slice(j, j + 45);
+      var r;
+      try { r = gget('', { ids: part.join(','), fields: 'effective_status,status' }); }
+      catch (e) { r = {}; part.forEach(function (id) { try { info[id] = gget(id, { fields: 'effective_status,status' }); } catch (x) { info[id] = { effective_status: 'DELETED' }; } }); }
+      Object.keys(r).forEach(function (k) { info[k] = r[k]; });
+    }
+    batch.forEach(function (o) {
+      var c = info[o.meta.campaignId] || { effective_status: 'DELETED' };
+      var eff = c.effective_status || c.status;
+      var next = o.status;
+      if (eff === 'ACTIVE') next = STATUS.ACTIVE;
+      else if (eff === 'DELETED' || eff === 'ARCHIVED') next = STATUS.REMOVED;
+      else if (eff === 'PAUSED') next = (o.status === STATUS.BUILT) ? STATUS.BUILT : STATUS.PAUSED;
+      var bad = Object.keys(o.meta.adIds || {}).map(function (k) { return info[o.meta.adIds[k]] || {}; })
+        .filter(function (a) { return ['DISAPPROVED', 'WITH_ISSUES'].indexOf(a.effective_status) >= 0; }).length;
+      var note = bad ? bad + ' quảng cáo bị Meta từ chối hoặc có vấn đề' : '';
+      if (next !== o.status || note !== (o.metaNote || '')) {
+        var before = o.status;
+        o.status = next; o.metaNote = note; o.metaCheckedAt = nowIso_();
+        writeOrder_(o);
+        if (before !== next) { logAction_('Hệ thống', o.id, 'Đồng bộ trạng thái từ Meta', o.meta.campaignId, 'OK', before + ' → ' + next); changed.push(o.id); }
+        if (note) logAction_('Hệ thống', o.id, 'Meta báo quảng cáo có vấn đề', o.meta.campaignId, 'Cảnh báo', note);
+      }
+    });
+  }
+  return { checked: orders.length, changed: changed };
+}

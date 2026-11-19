@@ -14,7 +14,7 @@ var ROLES = { admin: 4, approver: 3, runner: 2, content: 1 };
 var ROLE_LABEL = { admin: 'Quản trị', approver: 'Người duyệt', runner: 'Người chạy quảng cáo', content: 'Người viết nội dung' };
 var STATUS = {
   DRAFT: 'Nháp', QUEUED: 'Chờ dựng', BUILDING: 'Đang dựng', BUILT: 'Đã dựng (tạm dừng)',
-  ERROR: 'Lỗi', ACTIVE: 'Đang chạy', PAUSED: 'Tạm dừng'
+  ERROR: 'Lỗi', ACTIVE: 'Đang chạy', PAUSED: 'Tạm dừng', REMOVED: 'Đã xóa trên Meta'
 };
 var SHEETS = {
   Orders: ['id', 'status', 'name', 'account', 'createdBy', 'createdAt', 'updatedAt', 'j1', 'j2', 'j3', 'j4', 'j5', 'j6', 'j7', 'j8'],
@@ -76,6 +76,7 @@ function handlers_() { return {
   pauseLive:     { role: 'approver', fn: pauseLive_ },
   listLive:      { role: 'content',  fn: function () { return listLive_(); } },
   syncLive:      { role: 'runner',   fn: function () { return syncLive(); } },
+  syncOrders:    { role: 'runner',   fn: function () { return syncOrderStatuses(); } },
   cloneLive:     { role: 'runner',   fn: cloneLive_ },
   syncLibrary:   { role: 'runner',   fn: function () { return syncLibrary(); } },
   listLog:       { role: 'content',  fn: function (u, p) { return listLog_(p.orderId); } },
@@ -387,7 +388,8 @@ function listOrders_() {
     return { id: r.id, status: r.status, name: r.name, account: r.account, createdBy: r.createdBy,
              createdAt: r.createdAt, updatedAt: r.updatedAt,
              adsets: (o.adsets || []).length, ads: countMetaAds(o), budget: totalDailyBudget(o),
-             error: o.build && o.build.error || '', campaignId: o.meta && o.meta.campaignId || '' };
+             error: o.build && o.build.error || '', campaignId: o.meta && o.meta.campaignId || '',
+             metaNote: o.metaNote || '', metaCheckedAt: o.metaCheckedAt || '' };
   }).reverse();
 }
 

@@ -31,7 +31,7 @@ function role(min) { var R = { content: 1, runner: 2, approver: 3, admin: 4 }; r
 function acc(id) { return (S.settings.accounts || []).filter(function (a) { return a.id === id; })[0]; }
 function regionName(k) { var r = S.settings.regions.filter(function (x) { return String(x.key) === String(k); })[0]; return r ? r.name : k; }
 function statusBadge(st) {
-  var m = { 'Nháp': 'b-gray', 'Chờ dựng': 'b-info', 'Đang dựng': 'b-info', 'Đã dựng (tạm dừng)': 'b-warn', 'Lỗi': 'b-bad', 'Đang chạy': 'b-ok', 'Tạm dừng': 'b-gray' };
+  var m = { 'Đã xóa trên Meta': 'b-gray', 'Nháp': 'b-gray', 'Chờ dựng': 'b-info', 'Đang dựng': 'b-info', 'Đã dựng (tạm dừng)': 'b-warn', 'Lỗi': 'b-bad', 'Đang chạy': 'b-ok', 'Tạm dừng': 'b-gray' };
   return '<span class="badge ' + (m[st] || 'b-gray') + '">' + esc(st) + '</span>';
 }
 function ageBadge(a) {
@@ -126,7 +126,8 @@ function viewLive() {
 
 /* ================= Orders ================= */
 function viewOrders() {
-  var h = '<h2>Đơn lên camp' + (role('runner') ? '<button class="btn p sm right" data-act="newOrder">+ Tạo đơn mới</button>' : '') + '</h2>';
+  var h = '<h2>Đơn lên camp' + (role('runner') ? '<span class="right bar"><button class="btn sm" data-act="syncOrders">Đồng bộ trạng thái từ Meta</button><button class="btn p sm" data-act="newOrder">+ Tạo đơn mới</button></span>' : '') + '</h2>' +
+    '<p class="muted" style="margin-top:-8px">Trạng thái đơn tự đồng bộ với Ads Manager mỗi giờ (bật/tạm dừng/xóa ngoài app, quảng cáo bị từ chối).</p>';
   if (!S.orders.length) return h + '<p class="muted">Chưa có đơn nào.</p>';
   h += '<div class="tbl"><table><tr><th>Mã</th><th>Chiến dịch</th><th>Trạng thái</th><th class="n">Ngân sách/ngày</th><th class="n">Nhóm</th><th class="n">QC trên Meta</th><th>Người tạo</th><th>Cập nhật</th><th>Thao tác</th></tr>';
   S.orders.forEach(function (o) {
@@ -139,7 +140,7 @@ function viewOrders() {
     if (o.status === 'Đang chạy' && S.user.canActivate) b.push('<button class="btn sm danger" data-act="pauseOrder" data-id="' + o.id + '">Tạm dừng</button>');
     if (['Nháp', 'Lỗi'].indexOf(o.status) >= 0 && !o.campaignId && role('runner')) b.push('<button class="btn sm danger" data-act="deleteOrder" data-id="' + o.id + '">Xóa</button>');
     b.push('<button class="btn sm" data-act="orderLog" data-id="' + o.id + '">Nhật ký</button>');
-    h += '<tr><td>' + esc(o.id) + '</td><td>' + esc(o.name) + (o.error ? '<div class="muted" style="color:var(--badT)">' + esc(o.error) + '</div>' : '') +
+    h += '<tr><td>' + esc(o.id) + '</td><td>' + esc(o.name) + (o.error ? '<div class="muted" style="color:var(--badT)">' + esc(o.error) + '</div>' : '') + (o.metaNote ? '<div class="muted" style="color:var(--warnT)">⚠ ' + esc(o.metaNote) + '</div>' : '') +
       '</td><td>' + statusBadge(o.status) + (o.status === 'Đang dựng' || o.status === 'Chờ dựng' ? ' <span class="spinner"></span>' : '') +
       '</td><td class="n">' + money(o.budget) + '</td><td class="n">' + o.adsets + '</td><td class="n">' + o.ads + '</td><td>' + esc(o.createdBy) +
       '</td><td>' + esc(String(o.updatedAt).replace('T', ' ').slice(0, 16)) + '</td><td class="bar">' + b.join('') + '</td></tr>';
@@ -518,6 +519,8 @@ document.addEventListener('click', function (e) {
     orderLog: function () { S.logFilter = id; go('log'); },
     reloadLog: function () { loadTab(); },
     syncLive: function () { el.innerHTML = '<span class="spinner"></span> Đang đồng bộ…'; el.disabled = true; call('syncLive').then(function (d) { S.live = d; toast('Đã đồng bộ'); render(); }).catch(rerender); },
+    syncOrders: function () { el.innerHTML = '<span class="spinner"></span> Đang đồng bộ…'; el.disabled = true;
+      call('syncOrders').then(function (r) { toast('Đã kiểm tra ' + r.checked + ' đơn' + (r.changed.length ? ', cập nhật ' + r.changed.join(', ') : ', không có thay đổi')); loadTab(); }).catch(rerender); },
     syncLib: function () { el.innerHTML = '<span class="spinner"></span> Đang đồng bộ…'; el.disabled = true; call('syncLibrary').then(function (d) { S.library = d; toast('Đã đồng bộ thư viện'); render(); }).catch(rerender); },
     searchInterest: function () {
       var g = S.order.adsets[+el.dataset.i], q = S.open['ti_' + g.key] || '';

@@ -118,6 +118,7 @@ function validateOrder(order, ctx) {
   });
 
   // ---------- ads
+  var folderExtra = 0;
   var formById = {};
   lib.forms.forEach(function (f) { formById[f.id] = f; });
   (order.ads || []).forEach(function (a) {
@@ -130,6 +131,19 @@ function validateOrder(order, ctx) {
       if (acc && a.postId && String(a.postId).split('_')[0] !== acc.pageId) err(sc, 'bài viết không thuộc trang ' + acc.pageName);
     } else {
       if (!/drive\.google\.com|docs\.google\.com/.test(a.driveUrl || '')) err(sc, 'link video/ảnh phải là link Google Drive');
+      else if (!ctx.skipDrive) {
+        try {
+          var ref = driveRef_(a.driveUrl);
+          if (ref.type === 'folder') {
+            var n = folderMedia_(ref.id).length;
+            if (!n) err(sc, 'thư mục Drive không có video hoặc ảnh');
+            else { folderExtra += (n - 1) * adsetKeysFor(a, order).length; warn(sc, 'link thư mục: ' + n + ' video/ảnh → ' + n + ' quảng cáo cho mỗi nhóm'); }
+          } else {
+            var mt = DriveApp.getFileById(ref.id).getMimeType();
+            if (!/^(video|image)\//.test(mt)) err(sc, 'file Drive không phải video hoặc ảnh');
+          }
+        } catch (ex) { err(sc, 'không mở được link Drive (chia sẻ file/thư mục cho email chủ app)'); }
+      }
       if (a.thumbUrl && !/drive\.google\.com|docs\.google\.com/.test(a.thumbUrl)) err(sc, 'link ảnh bìa phải là link Google Drive');
       if (!a.message) err(sc, 'thiếu nội dung chính');
       if (!a.formId) err(sc, 'chưa chọn biểu mẫu');
@@ -144,7 +158,7 @@ function validateOrder(order, ctx) {
   return {
     errors: uniq(E), warnings: uniq(W),
     summary: { adsets: named.length, adTemplates: (order.ads || []).filter(function (a) { return a.name; }).length,
-               metaAds: nAds, dailyBudget: total, lifetime: hasSchedule(order) }
+               metaAds: nAds + folderExtra, dailyBudget: total, lifetime: hasSchedule(order) }
   };
 }
 

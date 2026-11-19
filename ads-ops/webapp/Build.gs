@@ -57,6 +57,7 @@ function buildStep_(o, started) {
   var acc = s.accounts.filter(function (a) { return a.id === o.campaign.account; })[0];
   if (!acc) throw new Error('Tài khoản không có trong Cài đặt.');
   var timeLeft = function () { return RUN_BUDGET_MS - (Date.now() - started); };
+  expandFolders_(o);
   var adsets = o.adsets.filter(function (g) { return g.name; });
   var templates = o.ads.filter(function (a) { return a.name; });
 
@@ -152,9 +153,51 @@ function log_(o, action, detail) {
 }
 
 function driveId_(url) {
-  var m = String(url || '').match(/\/d\/([a-zA-Z0-9_-]{20,})/) || String(url || '').match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
-  if (!m) throw new Error('Không đọc được ID file từ link Drive: ' + url);
-  return m[1];
+  var r = driveRef_(url);
+  if (r.type !== 'file') throw new Error('Cần link file, không phải link thư mục: ' + url);
+  return r.id;
+}
+
+/** {type:'file'|'folder', id} from any Google Drive link. */
+function driveRef_(url) {
+  var u = String(url || '');
+  var m = u.match(/\/folders\/([a-zA-Z0-9_-]{20,})/);
+  if (m) return { type: 'folder', id: m[1] };
+  m = u.match(/\/d\/([a-zA-Z0-9_-]{20,})/) || u.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
+  if (m) return { type: 'file', id: m[1] };
+  throw new Error('Không đọc được ID từ link Drive: ' + url);
+}
+
+/** Video/image files of a Drive folder, sorted by name. */
+function folderMedia_(folderId) {
+  var it = DriveApp.getFolderById(folderId).getFiles(), out = [];
+  while (it.hasNext()) {
+    var f = it.next();
+    if (/^(video|image)\//.test(f.getMimeType())) out.push({ id: f.getId(), name: f.getName() });
+  }
+  return out.sort(function (a, b) { return a.name.localeCompare(b.name); });
+}
+
+/** A template whose link is a folder becomes one template per video/image in that folder. */
+function expandFolders_(o) {
+  var out = [], changed = false;
+  (o.ads || []).forEach(function (t) {
+    if (!t.name || t.source === 'post' || !t.driveUrl) { out.push(t); return; }
+    var ref = driveRef_(t.driveUrl);
+    if (ref.type !== 'folder') { out.push(t); return; }
+    var files = folderMedia_(ref.id);
+    if (!files.length) throw new Error('Thư mục Drive của quảng cáo "' + t.name + '" không có video hoặc ảnh.');
+    files.forEach(function (f, i) {
+      var c = JSON.parse(JSON.stringify(t));
+      c.key = t.key + '_' + (i + 1);
+      c.name = t.name + ' | ' + f.name.replace(/\.[^.]+$/, '');
+      c.driveUrl = 'https://drive.google.com/file/d/' + f.id + '/view';
+      c.fromFolder = t.driveUrl;
+      out.push(c);
+    });
+    changed = true;
+  });
+  if (changed) { o.ads = out; log_(o, 'Tách thư mục Drive thành ' + out.length + ' mẫu quảng cáo', ''); }
 }
 
 function campaignDays_(adsets) {

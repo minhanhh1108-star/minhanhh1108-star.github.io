@@ -7,12 +7,12 @@ App tự dựng camp trên Meta ở trạng thái **tạm dừng**; chỉ ngư�
 
 | Tab | Dùng để |
 |---|---|
-| Camp đang chạy | Camp đang chạy trên các tài khoản, số liệu 7 ngày, mở ra xem nhóm và quảng cáo. Nhân bản thành camp mới, tạm dừng |
+| Camp Đang Chạy | Camp đang chạy trên các tài khoản, số liệu 7 ngày, mở ra xem nhóm và quảng cáo. Nhân bản thành camp mới, tạm dừng |
 | Camp AI Lên | Mọi camp theo trạng thái: Nháp → Chờ QC → Đã QC → Chờ dựng → Đang dựng → Đã dựng (tạm dừng) → Đang chạy / Lỗi |
-| + Lên camp | ① Chiến dịch → ② Nhóm (nhiều nhóm) → ③ Quảng cáo (dùng chung cho nhiều nhóm) → ④ Kiểm tra. Mỗi phần bấm "Xong" để thu gọn |
+| + Lên Camp | ① Chiến dịch → ② Nhóm (nhiều nhóm) → ③ Quảng cáo (dùng chung cho nhiều nhóm) → ④ Kiểm tra. Mỗi phần bấm "Xong" để thu gọn |
 | Tệp & Form | Tệp đối tượng và biểu mẫu thật, đồng bộ từ Meta |
-| Lịch sử | Mọi thao tác: ai, lúc nào, ID trên Meta, lỗi |
-| Team, Cài đặt | Chỉ quản trị: thêm người, phân quyền, giới hạn ngân sách, ngành và mục tiêu chi phí/lead |
+| Lịch Sử | Mọi thao tác: ai, lúc nào, ID trên Meta, lỗi |
+| Team, Cài Đặt | Chỉ quản trị: thêm người, phân quyền, giới hạn ngân sách, ngành và mục tiêu chi phí/lead |
 
 ## Vai trò
 

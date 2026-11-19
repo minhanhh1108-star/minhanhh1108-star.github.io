@@ -64,9 +64,9 @@ function go(tab) { S.tab = tab; render(); loadTab(); }
 function render() {
   var app = $('#app');
   if (!S.user) { app.innerHTML = viewLogin(); return; }
-  var tabs = [['live', 'Camp đang chạy'], ['orders', 'Camp AI Lên'], ['edit', S.order && S.order.id ? 'Sửa camp ' + S.order.id : '+ Lên camp'],
-              ['dash', 'Báo cáo'], ['library', 'Tệp & Form'], ['log', 'Lịch sử']];
-  if (role('admin')) tabs.push(['users', 'Team'], ['settings', 'Cài đặt']);
+  var tabs = [['live', 'Camp Đang Chạy'], ['orders', 'Camp AI Lên'], ['edit', S.order && S.order.id ? 'Sửa Camp ' + S.order.id : '+ Lên Camp'],
+              ['dash', 'Báo Cáo'], ['library', 'Tệp & Form'], ['log', 'Lịch Sử']];
+  if (role('admin')) tabs.push(['users', 'Team'], ['settings', 'Cài Đặt']);
   var html = '<header><h1>AI Agent Ads</h1><nav>' + tabs.map(function (t) {
     return '<button data-act="tab" data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'active' : '') + '">' + esc(t[1]) + '</button>';
   }).join('') + '</nav>' + (dashList()[0] ? '<a class="btn sm" href="' + esc(dashList()[0].url) + '" target="_blank" rel="noopener" style="background:#fff;color:var(--blue)">📊 Mở báo cáo</a>' : '') + '<div class="who">' + esc(S.user.name || S.user.email) + '<br><span>' + esc(S.user.roleLabel) +
@@ -94,7 +94,7 @@ function viewLive() {
     return ind ? ind.target : null;
   };
   var upd = S.live[0] && S.live[0].updatedAt || '—';
-  var h = '<h2>Camp đang chạy <span class="muted">Số liệu 7 ngày · cập nhật ' + esc(upd) + '</span>' +
+  var h = '<h2>Camp Đang Chạy <span class="muted">Số liệu 7 ngày · cập nhật ' + esc(upd) + '</span>' +
     (role('runner') ? '<button class="btn sm right" data-act="syncLive">Đồng bộ từ Meta</button>' : '') + '</h2>';
   if (!S.live.length) return h + '<p class="muted">Chưa có dữ liệu. Bấm "Đồng bộ từ Meta".</p>';
   h += '<div class="tbl"><table class="tree"><tr><th>Chiến dịch ▸ nhóm • quảng cáo</th><th>Tài khoản</th><th class="n">Ngân sách/ngày</th><th class="n">Chi tiêu</th><th class="n">Lead</th><th class="n">Chi phí/lead</th><th class="n">Mục tiêu</th><th>Nhắm chọn</th><th></th></tr>';
@@ -126,7 +126,7 @@ function viewLive() {
 
 /* ================= Orders ================= */
 function viewOrders() {
-  var h = '<h2>Camp AI Lên' + (role('runner') ? '<span class="right bar"><button class="btn sm" data-act="syncOrders">Đồng bộ trạng thái từ Meta</button><button class="btn p sm" data-act="newOrder">+ Lên camp mới</button></span>' : '') + '</h2>' +
+  var h = '<h2>Camp AI Lên' + (role('runner') ? '<span class="right bar"><button class="btn sm" data-act="syncOrders">Đồng bộ trạng thái từ Meta</button><button class="btn p sm" data-act="newOrder">+ Lên Camp Mới</button></span>' : '') + '</h2>' +
     '<p class="muted" style="margin-top:-8px">Trạng thái camp tự đồng bộ với Ads Manager mỗi giờ (bật/tạm dừng/xóa ngoài app, quảng cáo bị từ chối).</p>';
   if (!S.orders.length) return h + '<p class="muted">Chưa có camp nào.</p>';
   h += '<div class="tbl"><table><tr><th>Mã</th><th>Chiến dịch</th><th>Trạng thái</th><th class="n">Ngân sách/ngày</th><th class="n">Nhóm</th><th class="n">QC trên Meta</th><th>Người tạo</th><th>Cập nhật</th><th>Thao tác</th></tr>';
@@ -407,7 +407,7 @@ function sectionReview(o) {
 /* ================= Library / Log / Users / Settings ================= */
 function viewLibrary() {
   var f = S.libFilter, q = f.q.toLowerCase();
-  var h = '<h2>Tệp đối tượng & Form <span class="muted">cập nhật ' + esc(S.library.updatedAt || '—') + '</span>' +
+  var h = '<h2>Tệp Đối Tượng & Form <span class="muted">cập nhật ' + esc(S.library.updatedAt || '—') + '</span>' +
     (role('runner') ? '<button class="btn sm right" data-act="syncLib">Đồng bộ từ Meta</button>' : '') + '</h2>';
   h += '<div class="bar" style="margin-bottom:10px"><select data-libacc>' + '<option value="">Tất cả tài khoản</option>' + S.settings.accounts.map(function (a) {
     return '<option value="' + a.id + '"' + (f.acc === a.id ? ' selected' : '') + '>' + esc(a.name) + '</option>'; }).join('') +
@@ -424,7 +424,7 @@ function viewLibrary() {
 }
 
 function viewLog() {
-  var h = '<h2>Lịch sử thao tác <input type="text" placeholder="Lọc theo mã camp" data-logf value="' + esc(S.logFilter) + '" style="max-width:220px"><button class="btn sm" data-act="reloadLog">Lọc</button></h2>';
+  var h = '<h2>Lịch Sử Thao Tác <input type="text" placeholder="Lọc theo mã camp" data-logf value="' + esc(S.logFilter) + '" style="max-width:220px"><button class="btn sm" data-act="reloadLog">Lọc</button></h2>';
   return h + '<div class="tbl"><table><tr><th>Thời gian</th><th>Người</th><th>Camp</th><th>Hành động</th><th>ID Meta</th><th>Kết quả</th><th>Chi tiết</th></tr>' + S.log.map(function (l) {
     return '<tr><td>' + esc(l.time) + '</td><td>' + esc(l.user) + '</td><td>' + esc(l.orderId) + '</td><td>' + esc(l.action) + '</td><td>' + esc(l.objectId) + '</td><td>' +
       (l.result === 'OK' ? '<span class="badge b-ok">OK</span>' : '<span class="badge b-bad">' + esc(l.result) + '</span>') + '</td><td class="muted">' + esc(l.detail) + '</td></tr>'; }).join('') + '</table></div>';
@@ -458,9 +458,9 @@ function embedUrl(u) {
 
 function viewDashboard() {
   var list = dashList();
-  if (!list.length) return '<h2>Báo cáo</h2><p class="muted">Chưa có báo cáo. ' + (role('admin') ? 'Thêm link Looker Studio ở tab Cài đặt.' : 'Nhờ quản trị viên thêm link ở tab Cài đặt.') + '</p>';
+  if (!list.length) return '<h2>Báo Cáo</h2><p class="muted">Chưa có báo cáo. ' + (role('admin') ? 'Thêm link Looker Studio ở tab Cài Đặt.' : 'Nhờ quản trị viên thêm link ở tab Cài Đặt.') + '</p>';
   var cur = Math.min(S.dashIdx || 0, list.length - 1), d = list[cur];
-  return '<h2>Báo cáo' + (list.length > 1 ? ' <span class="chips">' + list.map(function (x, i) {
+  return '<h2>Báo Cáo' + (list.length > 1 ? ' <span class="chips">' + list.map(function (x, i) {
       return '<label class="chip' + (i === cur ? ' on' : '') + '" data-act="pickDash" data-i="' + i + '">' + esc(x.name || ('Báo cáo ' + (i + 1))) + '</label>'; }).join('') + '</span>' : ' <span class="muted">' + esc(d.name || '') + '</span>') +
     '<a class="btn sm right" href="' + esc(d.url) + '" target="_blank" rel="noopener">Mở trong tab mới ↗</a></h2>' +
     '<div class="card" style="overflow:hidden"><iframe src="' + esc(embedUrl(d.url)) + '" style="width:100%;height:calc(100vh - 170px);border:0;display:block" allowfullscreen ' +
@@ -493,7 +493,7 @@ function viewReportSettings() {
 function viewSettings() {
   var s = S.settings, L = s.limits;
   var num = function (k, label) { return '<div class="fld s" style="flex:0 0 200px"><label>' + label + '</label><input type="number" data-set="limits.' + k + '" value="' + esc(L[k]) + '"></div>'; };
-  var h = '<h2>Cài đặt</h2><div class="card"><div class="hd"><span class="ttl">Giới hạn an toàn</span></div><div class="bd"><div class="row">' +
+  var h = '<h2>Cài Đặt</h2><div class="card"><div class="hd"><span class="ttl">Giới hạn an toàn</span></div><div class="bd"><div class="row">' +
     num('minDaily', 'Ngân sách tối thiểu/ngày') + num('maxDailyPerCampaign', 'Tối đa/chiến dịch/ngày') + num('maxNewPerDay', 'Tổng camp mới/ngày') +
     num('singleAdsetBelow', 'Dưới mức này chỉ nên 1 nhóm') + num('audienceMaxDays', 'Tuổi tệp tối đa (ngày)') + num('primaryTextChars', 'Ký tự nội dung hiển thị') + '</div></div></div>';
   h += '<div class="card"><div class="hd"><span class="ttl">Ngành và mục tiêu chi phí/lead</span></div><div class="bd">' + s.industries.map(function (x, i) {

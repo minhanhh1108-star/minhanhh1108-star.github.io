@@ -7,7 +7,7 @@
  *   DB_ID       – created by setup().
  */
 
-var APP_NAME = 'Lên camp Meta';
+var APP_NAME = 'AI Agent Ads';
 var API_VERSION = 'v21.0';
 var SESSION_HOURS = 8;
 var ROLES = { admin: 4, approver: 3, runner: 2, content: 1 };
@@ -111,7 +111,7 @@ function setup() {
   if (dbId) {
     ss = SpreadsheetApp.openById(dbId);
   } else {
-    ss = SpreadsheetApp.create('Lên camp Meta – Cơ sở dữ liệu (không sửa tay)');
+    ss = SpreadsheetApp.create('AI Agent Ads – Cơ sở dữ liệu (không sửa tay)');
     props.setProperty('DB_ID', ss.getId());
   }
   Object.keys(SHEETS).forEach(function (name) {

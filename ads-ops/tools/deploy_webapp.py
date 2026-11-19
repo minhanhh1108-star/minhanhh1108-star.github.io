@@ -33,7 +33,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--script-id")
     ap.add_argument("--deployment-id")
-    ap.add_argument("--title", default="Lên camp Meta")
+    ap.add_argument("--title", default="AI Agent Ads")
     a = ap.parse_args()
     script_id = a.script_id
     if not script_id:
@@ -46,7 +46,7 @@ def main():
     call("PUT", f"/projects/{script_id}/content", {"files": files})
     print("Đã tải", len(files), "file lên")
     ver = call("POST", f"/projects/{script_id}/versions", {"description": "Bản cập nhật từ Claude"})["versionNumber"]
-    cfg = {"versionNumber": ver, "manifestFileName": "appsscript", "description": "Web app Lên camp Meta"}
+    cfg = {"versionNumber": ver, "manifestFileName": "appsscript", "description": "Web app AI Agent Ads"}
     if a.deployment_id:
         dep = call("PUT", f"/projects/{script_id}/deployments/{a.deployment_id}", {"deploymentConfig": cfg})
     else:

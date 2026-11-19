@@ -34,7 +34,7 @@ Không cần mở Ads Manager.
 3. Chạy `meta.py audit --account X`.
 4. Trả lời theo đúng format ở mục 4.
 
-### B00. Web app "Lên camp Meta" (Apps Script, thư mục `ads-ops/webapp/`)
+### B00. Web app "AI Agent Ads" (Apps Script, thư mục `ads-ops/webapp/`)
 Cả nhóm lên camp qua web app; app tự gọi Meta API (token trong Script Properties của dự án Apps Script) và dựng camp
 TẠM DỪNG; người duyệt bấm "Bật chạy". Hướng dẫn cài đặt: `ads-ops/webapp/HUONG_DAN_CAI_DAT.md`.
 Khi user nhờ sửa app: sửa file trong `ads-ops/webapp/`, chạy lại giả lập (gas_mock + e2e) nếu có, rồi nhắc user dán

@@ -1,4 +1,4 @@
-# Web app "Lên camp Meta" (Google Apps Script)
+# Web app "AI Agent Ads" (Google Apps Script)
 
 Web app cho cả nhóm lên camp quảng cáo Meta bằng cách tích chọn, không cần mở Ads Manager.
 App tự dựng camp trên Meta ở trạng thái **tạm dừng**; chỉ người được giao quyền mới bấm "Bật chạy".
@@ -34,7 +34,7 @@ Mọi người đăng nhập bằng **email + mã PIN** do quản trị cấp. L
 
 ## Cài đặt thủ công (khoảng 15 phút, làm 1 lần)
 
-1. Vào https://script.google.com → **Dự án mới**. Đặt tên "Lên camp Meta".
+1. Vào https://script.google.com → **Dự án mới**. Đặt tên "AI Agent Ads".
 2. Bấm biểu tượng bánh răng **Cài đặt dự án** → tích **"Hiển thị tệp kê khai appsscript.json"**.
 3. Tạo các file với **đúng tên**, dán nội dung từ thư mục này:
    - Tệp tập lệnh (.gs): `Code`, `Meta`, `Validate`, `Sync`, `Build`

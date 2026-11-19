@@ -67,7 +67,7 @@ function render() {
   var tabs = [['live', 'Camp đang chạy'], ['orders', 'Pipeline camp'], ['edit', S.order && S.order.id ? 'Sửa camp ' + S.order.id : '+ Lên camp'],
               ['dash', 'Báo cáo'], ['library', 'Tệp & Form'], ['log', 'Lịch sử']];
   if (role('admin')) tabs.push(['users', 'Team'], ['settings', 'Cài đặt']);
-  var html = '<header><h1>Lên camp Meta</h1><nav>' + tabs.map(function (t) {
+  var html = '<header><h1>AI Agent Ads</h1><nav>' + tabs.map(function (t) {
     return '<button data-act="tab" data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'active' : '') + '">' + esc(t[1]) + '</button>';
   }).join('') + '</nav>' + (dashList()[0] ? '<a class="btn sm" href="' + esc(dashList()[0].url) + '" target="_blank" rel="noopener" style="background:#fff;color:var(--blue)">📊 Mở báo cáo</a>' : '') + '<div class="who">' + esc(S.user.name || S.user.email) + '<br><span>' + esc(S.user.roleLabel) +
     '</span> · <a data-act="pin">Đổi PIN</a> · <a data-act="logout">Thoát</a></div></header><main>';
@@ -78,7 +78,7 @@ function render() {
 
 function viewLogin() {
   return '<div class="center"><div class="card login"><div class="bd" style="border:0;padding:22px">' +
-    '<h2>Lên camp Meta</h2><div class="fld"><label>Email</label><input type="email" id="lg-email" autocomplete="username"></div>' +
+    '<h2>AI Agent Ads</h2><div class="fld"><label>Email</label><input type="email" id="lg-email" autocomplete="username"></div>' +
     '<div class="fld" style="margin-top:10px"><label>Mã PIN</label><input type="password" id="lg-pin" inputmode="numeric" autocomplete="current-password"></div>' +
     '<div style="margin-top:14px"><button class="btn p" data-act="login" style="width:100%">Đăng nhập</button></div>' +
     '<p class="muted">Chưa có tài khoản? Nhờ quản trị viên thêm bạn ở tab Thành viên.</p></div></div></div>';

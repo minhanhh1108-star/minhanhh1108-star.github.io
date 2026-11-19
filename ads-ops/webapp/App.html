@@ -26,6 +26,35 @@ function call(action, payload) {
   });
 }
 
+/** In-app dialog (replaces the browser's prompt/confirm, which shows an ugly "page at googleusercontent.com says" header).
+ *  opts: {title, text, fields:[{id,label,type,placeholder}], ok, danger, cancel}. Resolves to values {id: value} (or {} if no fields), or null if cancelled. */
+function ask(opts) {
+  return new Promise(function (resolve) {
+    var bg = document.createElement('div'); bg.className = 'modal-bg';
+    bg.innerHTML = '<div class="modal" role="dialog"><h3 style="margin:0 0 6px;font-size:17px">' + esc(opts.title) + '</h3>' +
+      (opts.text ? '<div class="muted" style="font-size:13px;line-height:1.5;margin-bottom:6px">' + opts.text + '</div>' : '') +
+      (opts.fields || []).map(function (f) {
+        return '<div class="fld" style="margin-top:10px"><label>' + esc(f.label) + '</label><input data-f="' + f.id + '" type="' + (f.type || 'text') + '"' +
+          (f.type === 'password' ? ' inputmode="numeric" autocomplete="off"' : '') + ' placeholder="' + esc(f.placeholder || '') + '"></div>'; }).join('') +
+      '<div class="err muted" style="color:var(--badT);min-height:16px;margin-top:8px"></div>' +
+      '<div class="bar" style="justify-content:flex-end;margin-top:6px"><button class="btn" data-m="no">' + esc(opts.cancel || 'Hủy') + '</button>' +
+      '<button class="btn ' + (opts.danger ? 'go' : 'p') + '" data-m="ok">' + esc(opts.ok || 'Đồng ý') + '</button></div></div>';
+    document.body.appendChild(bg);
+    var first = bg.querySelector('input') || bg.querySelector('[data-m=ok]'); first.focus();
+    var done = function (v) { bg.remove(); document.removeEventListener('keydown', key, true); resolve(v); };
+    var submit = function () {
+      var v = {}; bg.querySelectorAll('[data-f]').forEach(function (i) { v[i.dataset.f] = i.value.trim(); });
+      var msg = opts.check ? opts.check(v) : '';
+      if (msg) { bg.querySelector('.err').textContent = msg; return; }
+      done(v);
+    };
+    var key = function (e) { if (e.key === 'Escape') { e.stopPropagation(); done(null); } else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); submit(); } };
+    document.addEventListener('keydown', key, true);
+    bg.addEventListener('click', function (e) { if (e.target === bg || e.target.dataset.m === 'no') done(null); else if (e.target.dataset.m === 'ok') submit(); });
+  });
+}
+function confirmBox(title, text, ok, danger) { return ask({ title: title, text: text, ok: ok || 'Đồng ý', danger: danger }); }
+
 function logoutLocal() { S.token = ''; S.user = null; localStorage.removeItem('lc_token'); render(); }
 
 function role(min) { var R = { content: 1, runner: 2, approver: 3, admin: 4 }; return S.user && R[S.user.role] >= R[min]; }
@@ -713,12 +742,16 @@ document.addEventListener('click', function (e) {
     },
     logout: function () { call('logout', { token: S.token }).finally(logoutLocal); },
     pin: function () {
-      var oldPin = prompt('Mã PIN hiện tại:'); if (!oldPin) return;
-      var newPin = prompt('Mã PIN mới (ít nhất 6 chữ số):'); if (!newPin) return;
-      call('changePin', { oldPin: oldPin, newPin: newPin }).then(function () { toast('Đã đổi mã PIN'); });
+      ask({ title: 'Đổi mã PIN', text: 'PIN mới gồm ít nhất 6 chữ số, chỉ bạn biết.', ok: 'Đổi PIN',
+        fields: [{ id: 'old', label: 'PIN hiện tại', type: 'password' }, { id: 'nw', label: 'PIN mới', type: 'password' }, { id: 'nw2', label: 'Nhập lại PIN mới', type: 'password' }],
+        check: function (v) { return !v.old ? 'Nhập PIN hiện tại' : !/^\d{6,}$/.test(v.nw) ? 'PIN mới phải có ít nhất 6 chữ số' : v.nw !== v.nw2 ? 'Hai lần nhập PIN mới không khớp' : ''; }
+      }).then(function (v) { if (!v) return; var oldPin = v.old, newPin = v.nw;
+      call('changePin', { oldPin: oldPin, newPin: newPin }).then(function () { toast('Đã đổi mã PIN'); }); });
     },
     tab: function () {
-      if (S.tab === 'edit' && S.dirty && el.dataset.tab !== 'edit' && !confirm('Camp chưa lưu. Rời trang?')) return;
+      if (S.tab === 'edit' && S.dirty && el.dataset.tab !== 'edit' && !el.dataset.ok) {
+        return confirmBox('Camp chưa lưu', 'Rời trang sẽ mất phần vừa sửa.', 'Rời trang', false).then(function (v) { if (v) { el.dataset.ok = 1; el.click(); delete el.dataset.ok; } });
+      }
       if (el.dataset.tab === 'edit' && !S.order && role('runner')) { S.order = blankOrder(); S.check = null; S.open = {}; }
       if (el.dataset.tab !== 'edit') S.dirty = false;
       go(el.dataset.tab);
@@ -731,15 +764,18 @@ document.addEventListener('click', function (e) {
     editOrder: function () { call('getOrder', { id: id }).then(function (o) { S.order = o; S.check = null; S.qc = null; S.open = { cd: false, nqc: true, qc: true }; o.adsets.forEach(function (g) { S.open['g_' + g.key] = false; }); o.ads.forEach(function (x) { S.open['a_' + x.key] = false; }); S.dirty = false; go('edit'); }); },
     cloneOrder: function () { call('cloneOrder', { id: id }).then(function (o) { toast('Đã tạo ' + o.id); S.order = o; S.check = null; S.qc = null; S.open = {}; go('edit'); }); },
     cloneLive: function () { el.disabled = true; call('cloneLive', { campaignId: id }).then(function (o) { toast('Đã tạo camp ' + o.id + ' từ camp đang chạy'); S.order = o; S.check = null; S.open = {}; go('edit'); }).catch(function () { el.disabled = false; }); },
-    deleteOrder: function () { if (confirm('Xóa camp nháp ' + id + '?')) call('deleteOrder', { id: id }).then(loadTab); },
+    deleteOrder: function () { confirmBox('Xóa camp nháp?', esc(id) + ' sẽ bị xóa hẳn.', 'Xóa').then(function (v) { if (v) call('deleteOrder', { id: id }).then(loadTab); }); },
     retry: function () { call('retryOrder', { id: id }).then(function () { toast('Đã đưa vào hàng chờ dựng lại'); loadTab(); }); },
     activate: function () {
-      var name = prompt('BẬT CHẠY sẽ bắt đầu tiêu tiền thật.\nGõ chính xác tên chiến dịch để xác nhận:\n\n' + el.dataset.name);
-      if (name === null) return;
-      call('activateOrder', { id: id, confirmName: name }).then(function () { toast('Đã bật chạy'); loadTab(); });
+      var nm = el.dataset.name;
+      ask({ title: 'Bật chạy camp?', text: '⚠ Camp sẽ <b>bắt đầu tiêu tiền thật</b>. Gõ đúng tên chiến dịch để xác nhận:<br><b>' + esc(nm) + '</b>', ok: '▶ Bật chạy', danger: true,
+        fields: [{ id: 'n', label: 'Tên chiến dịch', placeholder: 'Gõ lại tên ở trên' }] }).then(function (v) {
+        if (!v) return;
+        call('activateOrder', { id: id, confirmName: v.n }).then(function () { toast('Đã bật chạy'); loadTab(); });
+      });
     },
-    pauseOrder: function () { if (confirm('Tạm dừng chiến dịch?')) call('pauseOrder', { id: id }).then(function () { toast('Đã tạm dừng'); loadTab(); }); },
-    pauseLive: function () { if (confirm('Tạm dừng camp "' + el.dataset.name + '"?')) call('pauseLive', { campaignId: id, name: el.dataset.name }).then(function () { toast('Đã tạm dừng'); loadTab(); }); },
+    pauseOrder: function () { confirmBox('Tạm dừng camp?', 'Camp ngừng tiêu tiền ngay. Bật lại được bất cứ lúc nào.', 'Tạm dừng').then(function (v) { if (v) call('pauseOrder', { id: id }).then(function () { toast('Đã tạm dừng'); loadTab(); }); }); },
+    pauseLive: function () { confirmBox('Tạm dừng camp?', '<b>' + esc(el.dataset.name) + '</b> ngừng tiêu tiền ngay.', 'Tạm dừng').then(function (v) { if (v) call('pauseLive', { campaignId: id, name: el.dataset.name }).then(function () { toast('Đã tạm dừng'); loadTab(); }); }); },
     orderLog: function () { S.logFilter = id; go('log'); },
     reloadLog: function () { loadTab(); },
     clearLog: function () { S.logFilter = ''; loadTab(); },
@@ -767,11 +803,11 @@ document.addEventListener('click', function (e) {
     },
     addAdset: function () { S.order.adsets.push(newAdset(S.order.adsets.length + 1)); S.dirty = true; rerender(); },
     dupAdset: function () { var g = clone(S.order.adsets[+el.dataset.i]); g.key = newAdset(9).key; g.name = g.name + ' (bản sao)'; S.order.adsets.splice(+el.dataset.i + 1, 0, g); S.open['g_' + g.key] = true; S.dirty = true; rerender(); },
-    delAdset: function () { if (!confirm('Xóa nhóm này?')) return; var k = S.order.adsets[+el.dataset.i].key; S.order.adsets.splice(+el.dataset.i, 1);
-      S.order.ads.forEach(function (x) { x.runIn = x.runIn.filter(function (r) { return r !== k; }); if (!x.runIn.length) x.runIn = ['all']; }); S.dirty = true; rerender(); },
+    delAdset: function () { confirmBox('Xóa nhóm này?', '', 'Xóa').then(function (v) { if (!v) return; var k = S.order.adsets[+el.dataset.i].key; S.order.adsets.splice(+el.dataset.i, 1);
+      S.order.ads.forEach(function (x) { x.runIn = x.runIn.filter(function (r) { return r !== k; }); if (!x.runIn.length) x.runIn = ['all']; }); S.dirty = true; rerender(); }); },
     addAd: function () { S.order.ads.push(newAd(S.order.ads.length + 1)); S.dirty = true; rerender(); },
     dupAd: function () { var x = clone(S.order.ads[+el.dataset.i]); x.key = newAd(9).key; x.name = x.name + ' (bản sao)'; S.order.ads.splice(+el.dataset.i + 1, 0, x); S.open['a_' + x.key] = true; S.dirty = true; rerender(); },
-    delAd: function () { if (confirm('Xóa quảng cáo này?')) { S.order.ads.splice(+el.dataset.i, 1); S.dirty = true; rerender(); } },
+    delAd: function () { confirmBox('Xóa quảng cáo này?', '', 'Xóa').then(function (v) { if (v) { S.order.ads.splice(+el.dataset.i, 1); S.dirty = true; rerender(); } }); },
     seg: function () {
       var k = el.dataset.seg, v = el.dataset.v;
       if (k === 'liveAcc') S.liveF.acc = v; else if (k === 'liveOver') S.liveF.over = v; else if (k === 'ord') S.ordF = v; else if (k === 'set') S.setTab = v;
@@ -794,11 +830,13 @@ document.addEventListener('click', function (e) {
     qcReturn: function () { qcDecide(false); },
     qcRulesDefault: function () { call('qcRulesDefault').then(function (r) { $('#qc-json').value = JSON.stringify(r, null, 2); toast('Đã nạp bộ luật mặc định, sửa rồi bấm Lưu cài đặt'); }); },
     submit: function () {
-      if (!confirm('Chốt camp để AI dựng trên Meta (tạm dừng, chưa tiêu tiền)?')) return;
-      el.disabled = true;
-      saveQueued().then(function (o) { return call('submitOrder', { id: o.id }); })
-        .then(function () { toast('Đã gửi. Theo dõi tiến trình ở tab "Camp AI Lên".'); S.order = null; S.dirty = false; go('orders'); })
-        .catch(function () { el.disabled = false; });
+      confirmBox('Chốt camp?', 'AI sẽ dựng camp trên Meta ở trạng thái <b>tạm dừng</b>, chưa tiêu tiền. Người duyệt bật chạy sau.', 'Chốt camp', true).then(function (v) {
+        if (!v) return;
+        el.disabled = true;
+        saveQueued().then(function (o) { return call('submitOrder', { id: o.id }); })
+          .then(function () { toast('Đã chốt. Theo dõi tiến trình ở "Camp AI Lên".'); S.order = null; S.dirty = false; go('orders'); })
+          .catch(function () { el.disabled = false; });
+      });
     },
     newUser: function () { S.editUser = null; rerender(); },
     editUser: function () { var u = S.users[+el.dataset.i]; S.editUser = Object.assign({ pin: '' }, u); rerender(); },
@@ -819,9 +857,11 @@ document.addEventListener('click', function (e) {
     previewReport: function () { el.innerHTML = '<span class="spinner"></span> Đang tính…'; call('previewReport', {}).then(function (r) { S.repPreview = r.text; rerender(); }).catch(rerender); },
     sendReportNow: function () {
       if (!$('#tg-chat').value.trim()) return toast('Chọn nhóm nhận báo cáo trước (bấm Tìm nhóm rồi bấm vào tên nhóm).', true);
-      if (!confirm('Gửi báo cáo ngày hôm qua vào nhóm Telegram?')) return; el.innerHTML = '<span class="spinner"></span>';
-      saveReportForm(true).then(function () { return call('sendReportNow', {}); })
-        .then(function (r) { S.repPreview = r.text; toast('Đã gửi vào Telegram'); rerender(); }).catch(rerender); },
+      confirmBox('Gửi thử báo cáo?', 'Báo cáo ngày hôm qua sẽ được gửi vào nhóm Telegram đã chọn.', 'Gửi').then(function (v) {
+        if (!v) return; el.innerHTML = '<span class="spinner"></span>';
+        saveReportForm(true).then(function () { return call('sendReportNow', {}); })
+          .then(function (r) { S.repPreview = r.text; toast('Đã gửi vào Telegram'); rerender(); }).catch(rerender);
+      }); },
     addIndustry: function () { S.settings.industries.push({ name: '', target: 120000 }); rerender(); },
     saveSettings: function () {
       try { var adv = JSON.parse($('#adv-json').value); Object.assign(S.settings, adv); } catch (err) { return toast('JSON nâng cao không hợp lệ', true); }
@@ -843,9 +883,11 @@ function runChecks() {
 function qcDecide(approve) {
   var note = ($('#qc-note') || {}).value || '';
   if (!approve && !note.trim()) return toast('Ghi lý do trả về để người lên camp biết cần sửa gì.', true);
-  if (approve && !confirm('Duyệt QC camp ' + S.order.id + '?')) return;
-  call('qcDecide', { id: S.order.id, approve: approve, note: note }).then(function () {
-    toast(approve ? 'Đã duyệt QC' : 'Đã trả về'); S.order = null; go('orders'); });
+  (approve ? confirmBox('Duyệt QC?', 'Camp <b>' + esc(S.order.campaign.name || S.order.id) + '</b> sẽ được chuyển sang Đã QC để chốt.', 'Duyệt', true) : Promise.resolve({})).then(function (v) {
+    if (!v) return;
+    call('qcDecide', { id: S.order.id, approve: approve, note: note }).then(function () {
+      toast(approve ? 'Đã duyệt QC' : 'Đã trả về'); S.order = null; go('orders'); });
+  });
 }
 
 /** Saves are chained so a quick "Lưu" then "Hoàn thành" never creates two orders. */

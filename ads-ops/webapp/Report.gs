@@ -58,8 +58,7 @@ function headerIndex_(row, names) {
 }
 
 function readCost_(cfg, monthStart, day) {
-  var sh = SpreadsheetApp.openById(cfg.crmSheetId).getSheetByName(cfg.costTab);
-  if (!sh) throw new Error('Không thấy tab "' + cfg.costTab + '" trong file CRM.');
+  var sh = findTab_(SpreadsheetApp.openById(cfg.crmSheetId), cfg.costTab, 'file CRM');
   var v = sh.getDataRange().getValues();
   var h = v[0];
   var iDay = headerIndex_(h, ['Ngày cập nhật']), iPage = headerIndex_(h, ['Tên Page/Kênh']);
@@ -81,8 +80,7 @@ function readCost_(cfg, monthStart, day) {
 
 function readRevenue_(cfg, day, month, year) {
   var tab = cfg.dealTab.replace('{M}', month).replace('{YYYY}', year);
-  var sh = SpreadsheetApp.openById(cfg.revenueSheetId).getSheetByName(tab);
-  if (!sh) throw new Error('Không thấy tab "' + tab + '" trong file doanh thu.');
+  var sh = findTab_(SpreadsheetApp.openById(cfg.revenueSheetId), tab, 'file doanh thu');
   var v = sh.getDataRange().getValues();
   var h = v[0];
   var iDay = headerIndex_(h, ['Ngày chốt Deal']), iRev = headerIndex_(h, ['Doanh thu']), iBu = headerIndex_(h, ['BU']);
@@ -235,4 +233,16 @@ function sdtCount_(insight) {
   var acts = {};
   ((insight || {}).actions || []).forEach(function (a) { acts[a.action_type] = Number(a.value); });
   return Math.max(0, (acts['lead'] || 0) - (acts['onsite_conversion.lead'] || 0));
+}
+
+/** Finds a tab ignoring case, spaces and punctuation ("Deal T11/2026" = "Deal T112026"). */
+function findTab_(ss, name, label) {
+  var exact = ss.getSheetByName(name);
+  if (exact) return exact;
+  var key = function (x) { return String(x || '').normalize('NFC').toLowerCase().replace(/[^0-9a-zà-ỹđ]/g, ''); };
+  var want = key(name);
+  var all = ss.getSheets();
+  for (var i = 0; i < all.length; i++) if (key(all[i].getName()) === want) return all[i];
+  var similar = all.map(function (s) { return s.getName(); }).filter(function (n) { return key(n).indexOf(want.slice(0, 5)) === 0; });
+  throw new Error('Không thấy tab "' + name + '" trong ' + label + '.' + (similar.length ? ' Các tab gần giống: ' + similar.slice(0, 8).join(', ') : ''));
 }

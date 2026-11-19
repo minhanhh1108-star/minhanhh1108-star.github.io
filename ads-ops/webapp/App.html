@@ -246,7 +246,7 @@ function viewOrders() {
 /* ================= QC ================= */
 var QC_DEC = { APPROVE: ['Đạt', 'b-ok'], REWRITE: ['Nên sửa', 'b-warn'], HUMAN_REVIEW: ['Cần người duyệt', 'b-warn'], REJECT: ['Từ chối', 'b-bad'] };
 var QC_ICON = { GREEN: '✅', YELLOW: '🟡', ORANGE: '🟠', RED: '⛔', BLACK: '⛔' };
-function qcBadge(q) { var d = QC_DEC[q.decision] || [q.decision, 'b-gray']; return '<span class="badge ' + d[1] + '">QC: ' + esc(d[0]) + ' · ' + q.score + 'đ</span>'; }
+function qcBadge(q) { var d = QC_DEC[q.decision] || [q.decision, 'b-gray']; return '<span class="badge ' + d[1] + '">QC: ' + esc(d[0]) + ' · ' + q.score + '/100</span>'; }
 function qcLine(o) {
   if (!o.qc) return '';
   var n = o.qc.lastNote;
@@ -339,9 +339,9 @@ function actionBar(o) {
   var c = S.check;
   var btns = '<button class="btn" data-act="check">Kiểm tra</button>' +
     (editable() ? '<button class="btn" data-act="save">Lưu nháp</button>' : '') +
-    ((o.status !== 'Đã QC' || S.dirty) && editable() && role('runner') ? '<button class="btn go" data-act="sendQc"' + (c && !c.errors.length && !(S.qc && S.qc.decision === 'REJECT') ? '' : ' disabled title="Bấm Kiểm tra, sửa hết lỗi ⛔ trước"') + '>Gửi QC ▶</button>' : '') +
-    (o.status === 'Đã QC' && !S.dirty && role('runner') ? '<button class="btn go" data-act="submit"' + (c && !c.errors.length ? '' : ' disabled title="Bấm Kiểm tra trước"') + '>Chốt camp ▶ AI dựng trên Meta</button>' : '');
-  var hint = !c && editable() ? '<span class="muted">Bấm Kiểm tra để soát cấu hình và nội dung.</span>' :
+    ((o.status !== 'Đã QC' || S.dirty) && editable() && role('runner') ? '<button class="btn go" data-act="sendQc">Gửi QC ▶</button>' : '') +
+    (o.status === 'Đã QC' && !S.dirty && role('runner') ? '<button class="btn go" data-act="submit">Chốt camp ▶ AI dựng trên Meta</button>' : '');
+  var hint = !c ? '' :
     c && c.errors.length ? '<span class="badge b-bad">' + c.errors.length + ' lỗi cần sửa</span>' : c ? '<span class="badge b-ok">Cấu hình OK</span>' + (S.qc ? ' ' + qcBadge(S.qc) : '') : '';
   return '<div class="actbar"><div class="info"><span>Nhóm <b>' + o.adsets.length + '</b></span><span>Mẫu Ads <b>' + o.ads.length + '</b></span><span>Ngân sách <b>' + money(orderBudget(o)) + 'đ</b>/ngày</span>' + hint + '</div>' +
     '<div class="bar right">' + btns + '</div></div>';
@@ -816,24 +816,32 @@ document.addEventListener('click', function (e) {
     },
     jump: function () { var k = el.dataset.key; S.open[k] = true; rerender(); var t = document.getElementById('sec-' + k); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); },
     check: function () { runChecks().then(function () { S.open.rv = true; rerender();
-      toast(S.check.errors.length ? S.check.errors.length + ' lỗi cấu hình, xem mục ④' : 'Cấu hình OK · QC: ' + ((QC_DEC[S.qc.decision] || [S.qc.decision])[0]) + ' (' + S.qc.score + 'đ)', S.check.errors.length > 0); }); },
+      toast(S.check.errors.length ? S.check.errors.length + ' lỗi cấu hình, xem mục ④' : 'Cấu hình OK · QC: ' + ((QC_DEC[S.qc.decision] || [S.qc.decision])[0]) + ' (' + S.qc.score + '/100)', S.check.errors.length > 0); }); },
     save: function () { el.disabled = true; saveQueued().then(function (o) { toast('Đã lưu ' + o.id);
       return runChecks(); }).then(function () { rerender(); }).catch(function () { el.disabled = false; }); },
     qcFix: function () { call('qcAutoFix', { order: S.order }).then(function (r) { S.order.ads = r.order.ads; S.dirty = true; toast('Đã thay ' + r.replaced + ' cụm từ. Nhớ Lưu nháp.'); return runChecks(); }).then(rerender); },
     sendQc: function () {
       el.disabled = true;
-      saveQueued().then(function (o) { return call('sendToQc', { id: o.id }); })
+      saveQueued().then(function () { return runChecks(); }).then(function () {
+        if (S.check.errors.length) { blockedByChecks(); throw new Error('checks'); }
+        if (S.qc.decision === 'REJECT') { S.open.rv = true; rerender(); toast('Nội dung có lỗi ⛔ (mức ' + S.qc.risk + '), sửa trước khi gửi QC. Xem mục ④.', true); throw new Error('qc'); }
+        return call('sendToQc', { id: S.order.id });
+      })
         .then(function () { toast('Đã gửi QC. Bạn sẽ nhận email khi có kết quả.'); S.order = null; S.dirty = false; go('orders'); })
-        .catch(function () { el.disabled = false; call('getOrder', { id: S.order.id }).then(function (o) { S.order.qc = o.qc; S.qc = o.qc && o.qc.result; rerender(); }); });
+        .catch(function (e) { el.disabled = false; if (e && /checks|qc/.test(e.message)) return; call('getOrder', { id: S.order.id }).then(function (o) { S.order.qc = o.qc; S.qc = o.qc && o.qc.result; rerender(); }); });
     },
     qcApprove: function () { qcDecide(true); },
     qcReturn: function () { qcDecide(false); },
     qcRulesDefault: function () { call('qcRulesDefault').then(function (r) { $('#qc-json').value = JSON.stringify(r, null, 2); toast('Đã nạp bộ luật mặc định, sửa rồi bấm Lưu cài đặt'); }); },
     submit: function () {
-      confirmBox('Chốt camp?', 'AI sẽ dựng camp trên Meta ở trạng thái <b>tạm dừng</b>, chưa tiêu tiền. Người duyệt bật chạy sau.', 'Chốt camp', true).then(function (v) {
+      // No save here: saving an approved ("Đã QC") camp sends it back to draft.
+      runChecks().then(function () {
+        if (S.check.errors.length) return blockedByChecks();
+        return confirmBox('Chốt camp?', 'AI sẽ dựng camp trên Meta ở trạng thái <b>tạm dừng</b>, chưa tiêu tiền. Người duyệt bật chạy sau.', 'Chốt camp', true);
+      }).then(function (v) {
         if (!v) return;
         el.disabled = true;
-        saveQueued().then(function (o) { return call('submitOrder', { id: o.id }); })
+        call('submitOrder', { id: S.order.id })
           .then(function () { toast('Đã chốt. Theo dõi tiến trình ở "Camp AI Lên".'); S.order = null; S.dirty = false; go('orders'); })
           .catch(function () { el.disabled = false; });
       });
@@ -873,6 +881,11 @@ document.addEventListener('click', function (e) {
   };
   if (A[a]) { e.preventDefault(); A[a](); }
 });
+
+function blockedByChecks() {
+  S.open.rv = true; rerender();
+  toast(S.check.errors.length + ' lỗi cấu hình cần sửa trước, xem mục ④.', true);
+}
 
 /** Config validation + content QC together. */
 function runChecks() {

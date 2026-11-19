@@ -311,7 +311,7 @@ function activateOrder_(user, p) {
   if (!canActivate_(user, getSettings_())) throw new Error('Bạn chưa được giao quyền bật chạy.');
   var o = getOrder_(p.id);
   if ([STATUS.BUILT, STATUS.PAUSED].indexOf(o.status) < 0) throw new Error('Chỉ bật được đơn đã dựng hoặc đang tạm dừng.');
-  if (p.confirmName !== o.campaign.name) throw new Error('Tên xác nhận không khớp tên chiến dịch.');
+  if (normName_(p.confirmName) !== normName_(o.campaign.name)) throw new Error('Tên xác nhận không khớp tên chiến dịch.');
   var m = o.meta;
   Object.keys(m.adIds).forEach(function (k) { gpost(m.adIds[k], { status: 'ACTIVE' }); });
   Object.keys(m.adsetIds).forEach(function (k) { gpost(m.adsetIds[k], { status: 'ACTIVE' }); });
@@ -333,4 +333,9 @@ function pauseOrder_(user, p) {
   writeOrder_(o);
   logAction_(user.email, o.id, 'Tạm dừng', o.meta.campaignId, 'OK', o.campaign.name);
   return o;
+}
+
+/** Compare names the way a person reads them: same Unicode form (Mac keyboards send decomposed accents), spaces, case. */
+function normName_(s) {
+  return String(s || '').normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase();
 }

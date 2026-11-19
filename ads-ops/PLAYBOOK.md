@@ -48,6 +48,14 @@ bản mới và tạo "Phiên bản mới" cho bản triển khai. Sheet kế ho
 - Người duyệt QC: `settings.qcReviewers`, để trống = chỉ chủ app. Bộ luật sửa ở Cài đặt → QC nội dung (JSON, regex).
 - Khi user nhờ Claude viết/sửa content quảng cáo: tự soát theo cùng bộ luật trước khi đưa.
 
+### B02. Đăng báo cáo / nhật ký lên app (tab "Báo Cáo & Nhật Ký")
+- Mỗi bản phân tích, đề xuất camp hay báo cáo làm ở chat: ngoài trả lời ngắn trong chat, tạo file Markdown trong thư mục Drive
+  "AI Agent Ads – Báo cáo & Nhật ký" (ID ở `webapp/Local.gs` → LOCAL_DOCS_FOLDER), tên `[Báo cáo] YYYY-MM-DD – Tiêu đề.md`
+  (Google Drive MCP `create_file`, `contentMimeType: text/markdown`, `disableConversionToGoogleType: true`).
+- Sau mỗi đợt cập nhật app: thêm/ghi file `[Nhật ký] YYYY-MM-DD – …md`.
+- Markdown hỗ trợ: tiêu đề, bảng, danh sách, trích dẫn, **đậm**. Số liệu thật chỉ để trong Drive, không commit vào git.
+- Tab "Đề Xuất" của app là bộ luật tự động (`webapp/Recs.gs`); khi phân tích tay, dùng cùng ngưỡng để nhất quán.
+
 ### B0. Nguồn sự thật: Google Sheet "Kế hoạch quảng cáo Meta (mỗi chiến dịch 1 tab) – v2 nhiều tệp"
 Tìm theo tên trên Google Drive (không ghi ID sheet vào repo vì repo công khai). Cấu trúc:
 - `Tổng quan`: cột A = tên tab chiến dịch; các cột khác tự đọc từ tab đó (tên, trạng thái, ngân sách, số nhóm, số QC, kiểm tra).

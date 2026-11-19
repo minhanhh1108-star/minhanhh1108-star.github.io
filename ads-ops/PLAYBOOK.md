@@ -40,6 +40,14 @@ TẠM DỪNG; người duyệt bấm "Bật chạy". Hướng dẫn cài đặt:
 Khi user nhờ sửa app: sửa file trong `ads-ops/webapp/`, chạy lại giả lập (gas_mock + e2e) nếu có, rồi nhắc user dán
 bản mới và tạo "Phiên bản mới" cho bản triển khai. Sheet kế hoạch bên dưới là cách làm cũ (vẫn dùng được).
 
+### B01. QC nội dung trước khi dựng camp (`webapp/QC.gs`)
+- Luồng: Nháp → Gửi QC → (chủ app) Duyệt/Trả về → Đã QC → Hoàn thành → dựng camp tạm dừng → bật chạy. Sửa đơn Đã QC → quay về Nháp, phải QC lại.
+- Soát tự động theo 2 tài liệu: Policy Engine V3 (mức GREEN/YELLOW/ORANGE/RED/BLACK) + Bộ quy tắc content Chatbot AI (§3, §7–§9, §11–§21).
+  RED/BLACK → chặn gửi QC; ORANGE → người QC phải ghi chú khi duyệt; YELLOW → gợi ý sửa; bảng §21 có nút "Sửa nhanh".
+- Bài viết có sẵn (post ID): app đọc nội dung bài qua page token để soát.
+- Người duyệt QC: `settings.qcReviewers`, để trống = chỉ chủ app. Bộ luật sửa ở Cài đặt → QC nội dung (JSON, regex).
+- Khi user nhờ Claude viết/sửa content quảng cáo: tự soát theo cùng bộ luật trước khi đưa.
+
 ### B0. Nguồn sự thật: Google Sheet "Kế hoạch quảng cáo Meta (mỗi chiến dịch 1 tab) – v2 nhiều tệp"
 Tìm theo tên trên Google Drive (không ghi ID sheet vào repo vì repo công khai). Cấu trúc:
 - `Tổng quan`: cột A = tên tab chiến dịch; các cột khác tự đọc từ tab đó (tên, trạng thái, ngân sách, số nhóm, số QC, kiểm tra).

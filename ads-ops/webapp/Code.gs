@@ -13,7 +13,7 @@ var SESSION_HOURS = 8;
 var ROLES = { admin: 4, approver: 3, runner: 2, content: 1 };
 var ROLE_LABEL = { admin: 'Quản trị', approver: 'Người duyệt', runner: 'Người chạy quảng cáo', content: 'Người viết nội dung' };
 var STATUS = {
-  DRAFT: 'Nháp', QUEUED: 'Chờ dựng', BUILDING: 'Đang dựng', BUILT: 'Đã dựng (tạm dừng)',
+  DRAFT: 'Nháp', QC_PENDING: 'Chờ QC', QC_OK: 'Đã QC', QUEUED: 'Chờ dựng', BUILDING: 'Đang dựng', BUILT: 'Đã dựng (tạm dừng)',
   ERROR: 'Lỗi', ACTIVE: 'Đang chạy', PAUSED: 'Tạm dừng', REMOVED: 'Đã xóa trên Meta'
 };
 var SHEETS = {
@@ -70,6 +70,11 @@ function handlers_() { return {
   cloneOrder:    { role: 'runner',   fn: cloneOrder_ },
   deleteOrder:   { role: 'runner',   fn: deleteOrder_ },
   submitOrder:   { role: 'runner',   fn: submitOrder_ },
+  qcPreview:     { role: 'content',  fn: function (u, p) { return qcOrder(p.order); } },
+  qcAutoFix:     { role: 'content',  fn: function (u, p) { return qcAutoFix_(p.order); } },
+  sendToQc:      { role: 'runner',   fn: sendToQc_ },
+  qcDecide:      { role: 'content',  fn: qcDecide_ },
+  qcRulesDefault:{ role: 'admin',    fn: function () { return defaultQcRules_(); } },
   retryOrder:    { role: 'runner',   fn: retryOrder_ },
   activateOrder: { role: 'approver', fn: activateOrder_ },
   pauseOrder:    { role: 'approver', fn: pauseOrder_ },
@@ -378,7 +383,8 @@ function bootstrap_(user) {
     settings: getSettings_(),
     library: loadLibrary_(),
     status: STATUS,
-    roles: ROLE_LABEL
+    roles: ROLE_LABEL,
+    canQc: canQc_(user, getSettings_())
   };
 }
 
@@ -397,7 +403,9 @@ function listOrders_() {
              createdAt: r.createdAt, updatedAt: r.updatedAt,
              adsets: (o.adsets || []).length, ads: countMetaAds(o), budget: totalDailyBudget(o),
              error: o.build && o.build.error || '', campaignId: o.meta && o.meta.campaignId || '',
-             metaNote: o.metaNote || '', metaCheckedAt: o.metaCheckedAt || '' };
+             metaNote: o.metaNote || '', metaCheckedAt: o.metaCheckedAt || '',
+             qc: o.qc && o.qc.result ? { decision: o.qc.result.decision, risk: o.qc.result.risk, score: o.qc.result.score,
+                   lastNote: (o.qc.notes || []).slice(-1)[0] || null } : null };
   }).reverse();
 }
 
@@ -419,7 +427,7 @@ function writeOrder_(o) {
   return o;
 }
 
-var EDITABLE = [STATUS.DRAFT, STATUS.ERROR];
+var EDITABLE = [STATUS.DRAFT, STATUS.ERROR, STATUS.QC_OK];
 
 function saveOrder_(user, p) {
   var incoming = p.order;
@@ -443,6 +451,7 @@ function saveOrder_(user, p) {
       o.clonedFrom = incoming.clonedFrom || o.clonedFrom || '';
     }
     if (o.status === STATUS.ERROR) { o.status = STATUS.DRAFT; if (o.build) o.build.error = ''; }
+    if (o.status === STATUS.QC_OK) { o.status = STATUS.DRAFT; if (o.qc) o.qc.approvedBy = ''; } // edited after QC → QC again
     writeOrder_(o);
     logAction_(user.email, o.id, 'Lưu đơn', '', 'OK', o.campaign && o.campaign.name || '');
     return o;
@@ -467,7 +476,7 @@ function cloneOrder_(user, p) {
 
 function deleteOrder_(user, p) {
   var o = getOrder_(p.id);
-  if ([STATUS.DRAFT, STATUS.ERROR].indexOf(o.status) < 0 || (o.meta && o.meta.campaignId)) {
+  if ([STATUS.DRAFT, STATUS.ERROR, STATUS.QC_OK].indexOf(o.status) < 0 || (o.meta && o.meta.campaignId)) {
     throw new Error('Chỉ xóa được đơn nháp chưa dựng trên Meta.');
   }
   deleteRow_('Orders', 'id', o.id);
@@ -477,7 +486,7 @@ function deleteOrder_(user, p) {
 
 function submitOrder_(user, p) {
   var o = getOrder_(p.id);
-  if (o.status !== STATUS.DRAFT) throw new Error('Chỉ gửi được đơn ở trạng thái Nháp.');
+  if (o.status !== STATUS.QC_OK) throw new Error('Đơn phải được QC duyệt trước (trạng thái hiện tại: ' + o.status + ').');
   var v = validateOrder(o, loadContext_());
   if (v.errors.length) throw new Error('Còn lỗi cần sửa: ' + v.errors.map(function (e) { return e.msg; }).join(' · '));
   o.status = STATUS.QUEUED;
@@ -516,10 +525,10 @@ function listLog_(orderId) {
   });
 }
 
-function notify_(o, subject, body) {
+function notify_(o, subject, body, onlyTo) {
   try {
     var s = getSettings_();
-    var to = [o.createdBy, o.submittedBy].concat(s.notifyEmails || []).concat(s.approvers || [])
+    var to = (onlyTo || [o.createdBy, o.submittedBy].concat(s.notifyEmails || []).concat(s.approvers || []))
       .filter(function (e, i, a) { return e && a.indexOf(e) === i; });
     if (!to.length) return;
     MailApp.sendEmail({ to: to.join(','), subject: '[' + APP_NAME + '] ' + subject, body: body + '\n\nMở app: ' + ScriptApp.getService().getUrl() });

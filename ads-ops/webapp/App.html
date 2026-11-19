@@ -31,7 +31,7 @@ function role(min) { var R = { content: 1, runner: 2, approver: 3, admin: 4 }; r
 function acc(id) { return (S.settings.accounts || []).filter(function (a) { return a.id === id; })[0]; }
 function regionName(k) { var r = S.settings.regions.filter(function (x) { return String(x.key) === String(k); })[0]; return r ? r.name : k; }
 function statusBadge(st) {
-  var m = { 'Đã xóa trên Meta': 'b-gray', 'Nháp': 'b-gray', 'Chờ dựng': 'b-info', 'Đang dựng': 'b-info', 'Đã dựng (tạm dừng)': 'b-warn', 'Lỗi': 'b-bad', 'Đang chạy': 'b-ok', 'Tạm dừng': 'b-gray' };
+  var m = { 'Đã xóa trên Meta': 'b-gray', 'Nháp': 'b-gray', 'Chờ QC': 'b-warn', 'Đã QC': 'b-ok', 'Chờ dựng': 'b-info', 'Đang dựng': 'b-info', 'Đã dựng (tạm dừng)': 'b-warn', 'Lỗi': 'b-bad', 'Đang chạy': 'b-ok', 'Tạm dừng': 'b-gray' };
   return '<span class="badge ' + (m[st] || 'b-gray') + '">' + esc(st) + '</span>';
 }
 function ageBadge(a) {
@@ -44,7 +44,7 @@ function ageBadge(a) {
 function boot() {
   if (!S.token) return render();
   call('bootstrap').then(function (d) {
-    S.user = d.user; S.settings = d.settings; S.library = d.library; S.status = d.status;
+    S.user = d.user; S.settings = d.settings; S.library = d.library; S.status = d.status; S.canQc = d.canQc;
     render(); loadTab();
   }).catch(function () { render(); });
 }
@@ -132,15 +132,16 @@ function viewOrders() {
   h += '<div class="tbl"><table><tr><th>Mã</th><th>Chiến dịch</th><th>Trạng thái</th><th class="n">Ngân sách/ngày</th><th class="n">Nhóm</th><th class="n">QC trên Meta</th><th>Người tạo</th><th>Cập nhật</th><th>Thao tác</th></tr>';
   S.orders.forEach(function (o) {
     var b = [];
-    if (['Nháp', 'Lỗi'].indexOf(o.status) >= 0) b.push('<button class="btn sm" data-act="editOrder" data-id="' + o.id + '">Sửa</button>');
+    if (o.status === 'Chờ QC' && S.canQc) b.push('<button class="btn sm go" data-act="editOrder" data-id="' + o.id + '">QC đơn</button>');
+    else if (['Nháp', 'Lỗi', 'Đã QC'].indexOf(o.status) >= 0) b.push('<button class="btn sm" data-act="editOrder" data-id="' + o.id + '">Sửa</button>');
     else b.push('<button class="btn sm" data-act="editOrder" data-id="' + o.id + '">Xem</button>');
     if (role('runner')) b.push('<button class="btn sm" data-act="cloneOrder" data-id="' + o.id + '">Nhân bản</button>');
     if (o.status === 'Lỗi' && role('runner')) b.push('<button class="btn sm" data-act="retry" data-id="' + o.id + '">Chạy lại</button>');
     if (['Đã dựng (tạm dừng)', 'Tạm dừng'].indexOf(o.status) >= 0 && S.user.canActivate) b.push('<button class="btn sm go" data-act="activate" data-id="' + o.id + '" data-name="' + esc(o.name) + '">Bật chạy</button>');
     if (o.status === 'Đang chạy' && S.user.canActivate) b.push('<button class="btn sm danger" data-act="pauseOrder" data-id="' + o.id + '">Tạm dừng</button>');
-    if (['Nháp', 'Lỗi'].indexOf(o.status) >= 0 && !o.campaignId && role('runner')) b.push('<button class="btn sm danger" data-act="deleteOrder" data-id="' + o.id + '">Xóa</button>');
+    if (['Nháp', 'Lỗi', 'Đã QC'].indexOf(o.status) >= 0 && !o.campaignId && role('runner')) b.push('<button class="btn sm danger" data-act="deleteOrder" data-id="' + o.id + '">Xóa</button>');
     b.push('<button class="btn sm" data-act="orderLog" data-id="' + o.id + '">Nhật ký</button>');
-    h += '<tr><td>' + esc(o.id) + '</td><td>' + esc(o.name) + (o.error ? '<div class="muted" style="color:var(--badT)">' + esc(o.error) + '</div>' : '') + (o.metaNote ? '<div class="muted" style="color:var(--warnT)">⚠ ' + esc(o.metaNote) + '</div>' : '') +
+    h += '<tr><td>' + esc(o.id) + '</td><td>' + esc(o.name) + (o.error ? '<div class="muted" style="color:var(--badT)">' + esc(o.error) + '</div>' : '') + (o.metaNote ? '<div class="muted" style="color:var(--warnT)">⚠ ' + esc(o.metaNote) + '</div>' : '') + qcLine(o) +
       '</td><td>' + statusBadge(o.status) + (o.status === 'Đang dựng' || o.status === 'Chờ dựng' ? ' <span class="spinner"></span>' : '') +
       '</td><td class="n">' + money(o.budget) + '</td><td class="n">' + o.adsets + '</td><td class="n">' + o.ads + '</td><td>' + esc(o.createdBy) +
       '</td><td>' + esc(String(o.updatedAt).replace('T', ' ').slice(0, 16)) + '</td><td class="bar">' + b.join('') + '</td></tr>';
@@ -151,6 +152,37 @@ function viewOrders() {
     h += '<p class="muted">Có đơn đang dựng, trang tự cập nhật mỗi 20 giây.</p>';
   }
   return h;
+}
+
+/* ================= QC ================= */
+var QC_DEC = { APPROVE: ['Đạt', 'b-ok'], REWRITE: ['Nên sửa', 'b-warn'], HUMAN_REVIEW: ['Cần người duyệt', 'b-warn'], REJECT: ['Từ chối', 'b-bad'] };
+var QC_ICON = { GREEN: '✅', YELLOW: '🟡', ORANGE: '🟠', RED: '⛔', BLACK: '⛔' };
+function qcBadge(q) { var d = QC_DEC[q.decision] || [q.decision, 'b-gray']; return '<span class="badge ' + d[1] + '">QC: ' + esc(d[0]) + ' · ' + q.score + 'đ</span>'; }
+function qcLine(o) {
+  if (!o.qc) return '';
+  var n = o.qc.lastNote;
+  return '<div style="margin-top:3px">' + qcBadge(o.qc) + (n && n.note ? ' <span class="muted">' + esc(n.decision) + ': ' + esc(n.note) + '</span>' : '') + '</div>';
+}
+function qcPanel(o) {
+  var q = S.qc || (o.qc && o.qc.result);
+  var h = '<div class="card" style="margin-top:12px"><div class="hd"><span class="ttl">Soát nội dung theo chính sách quảng cáo + quy tắc content</span>' + (q ? '<span class="right">' + qcBadge(q) + ' <span class="muted">rủi ro ' + esc(q.risk) + '</span></span>' : '') + '</div><div class="bd">';
+  if (!q) return h + '<p class="muted">Bấm "Kiểm tra lại" để soát nội dung.</p></div></div>';
+  if (!q.items.length) h += '<ul class="msgs"><li class="w" style="background:var(--ok);color:var(--okT)">✅ Không phát hiện vi phạm.</li></ul>';
+  else h += '<ul class="msgs">' + q.items.map(function (x) {
+    var cls = x.level === 'RED' || x.level === 'BLACK' ? 'e' : 'w';
+    return '<li class="' + cls + '">' + (QC_ICON[x.level] || '') + ' <b>' + esc(x.level) + '</b> · ' + esc(x.where) + (x.excerpt ? ': "<b>' + esc(x.excerpt) + '</b>"' : '') +
+      '<br>' + esc(x.msg) + (x.fix ? '<br><span style="color:#374151">→ Gợi ý: ' + esc(x.fix) + '</span>' : '') + ' <span class="muted">[' + esc(x.rule) + ' · ' + esc(x.src) + ']</span></li>';
+  }).join('') + '</ul>';
+  var canFix = editable() && q.items.some(function (x) { return x.replace; });
+  if (canFix) h += '<button class="btn sm" data-act="qcFix" style="margin-top:6px">Sửa nhanh từ ngữ theo bảng quy đổi §21</button>';
+  var notes = (o.qc && o.qc.notes) || [];
+  if (notes.length) h += '<details style="margin-top:8px"' + (o.status === 'Nháp' ? ' open' : '') + '><summary>Lịch sử QC</summary><ul class="msgs">' + notes.slice().reverse().map(function (n) {
+    return '<li class="w" style="background:#f8fafc;color:#374151">' + esc(n.at.replace('T', ' ')) + ' · <b>' + esc(n.decision) + '</b> bởi ' + esc(n.by) + (n.note ? ': ' + esc(n.note) : '') + '</li>'; }).join('') + '</ul></details>';
+  if (o.status === 'Chờ QC' && S.canQc) {
+    h += '<div style="margin-top:10px"><textarea id="qc-note" placeholder="Ghi chú QC (bắt buộc khi trả về, hoặc khi duyệt đơn có mục 🟠)" style="min-height:60px"></textarea>' +
+      '<div class="bar" style="margin-top:6px"><button class="btn go" data-act="qcApprove">✓ Duyệt QC</button><button class="btn danger" data-act="qcReturn">✗ Trả về sửa</button></div></div>';
+  }
+  return h + '</div></div>';
 }
 
 /* ================= Editor ================= */
@@ -170,7 +202,7 @@ function newAd(n) {
 }
 
 function lockedCD() { return !role('runner') || !editable(); }
-function editable() { return !S.order.status || ['Nháp', 'Lỗi'].indexOf(S.order.status) >= 0; }
+function editable() { return !S.order.status || ['Nháp', 'Lỗi', 'Đã QC'].indexOf(S.order.status) >= 0; }
 function dis(locked) { return locked ? ' disabled' : ''; }
 
 function chip(path, value, label, on, type, locked, extra) {
@@ -184,7 +216,9 @@ function viewEditor() {
   var h = '<h2>' + (o.id ? 'Đơn ' + esc(o.id) + ' ' + statusBadge(o.status) : 'Tạo đơn mới') +
     (o.clonedFrom ? ' <span class="muted">nhân bản từ ' + esc(o.clonedFrom) + '</span>' : '') +
     '<span class="right bar"><button class="btn sm" data-act="expandAll">Mở tất cả</button><button class="btn sm" data-act="collapseAll">Thu gọn tất cả</button></span></h2>';
-  if (!editable()) h += '<p class="muted">Đơn đã gửi đi, chỉ xem. Muốn thay đổi hãy "Nhân bản" thành đơn mới.</p>';
+  if (o.status === 'Chờ QC') h += '<p class="muted">Đơn đang chờ QC, chỉ xem.' + (S.canQc ? ' Kéo xuống mục ④ để duyệt hoặc trả về.' : '') + '</p>';
+  else if (o.status === 'Đã QC') h += '<p class="muted">Đơn đã qua QC. Nếu sửa và lưu, đơn quay về Nháp và phải QC lại.</p>';
+  else if (!editable()) h += '<p class="muted">Đơn đã gửi đi, chỉ xem. Muốn thay đổi hãy "Nhân bản" thành đơn mới.</p>';
   h += sectionCampaign(o, L) + sectionAdsets(o, L) + sectionAds(o) + sectionReview(o);
   return h;
 }
@@ -349,7 +383,9 @@ function sectionReview(o) {
   var c = S.check;
   var b = '<div class="bar"><button class="btn" data-act="check">Kiểm tra lại</button>' +
     (editable() ? '<button class="btn p" data-act="save">Lưu nháp</button>' : '') +
-    (editable() && role('runner') ? '<button class="btn go" data-act="submit"' + (c && !c.errors.length ? '' : ' disabled') + '>Hoàn thành ▶ gửi dựng camp</button>' : '') + '</div>';
+    ((o.status !== 'Đã QC' || S.dirty) && editable() && role('runner') ? '<button class="btn go" data-act="sendQc"' + (c && !c.errors.length && !(S.qc && S.qc.decision === 'REJECT') ? '' : ' disabled') + '>Gửi QC ▶</button>' : '') +
+    (o.status === 'Đã QC' && !S.dirty && role('runner') ? '<button class="btn go" data-act="submit"' + (c && !c.errors.length ? '' : ' disabled') + '>Hoàn thành ▶ gửi dựng camp</button>' : '') + '</div>' +
+    '<p class="muted" style="margin:6px 0 0">Quy trình: Nháp → Gửi QC → QC duyệt → Hoàn thành → AI dựng camp (tạm dừng) → Người duyệt bật chạy.</p>';
   if (c) {
     var sm = c.summary;
     b += '<div class="stat"><div><span class="muted">Nhóm</span><b>' + sm.adsets + '</b></div><div><span class="muted">Mẫu quảng cáo</span><b>' + sm.adTemplates + '</b></div>' +
@@ -363,6 +399,7 @@ function sectionReview(o) {
     b += '<details style="margin-top:10px"><summary>Tiến trình dựng camp</summary><ul class="msgs">' + o.build.log.slice().reverse().map(function (l) {
       return '<li class="w" style="background:#f8fafc;color:#374151">' + esc(l.t.replace('T', ' ')) + ' · ' + esc(l.a) + ' ' + esc(l.d) + '</li>'; }).join('') + '</ul></details>';
   }
+  b += qcPanel(o);
   if (o.meta && o.meta.campaignId) b += '<p class="muted">ID chiến dịch trên Meta: ' + esc(o.meta.campaignId) + '</p>';
   return card('rv', 'sec r', '④ Kiểm tra và xác nhận', c ? (c.errors.length ? c.errors.length + ' lỗi' : 'OK') + (c.warnings.length ? ', ' + c.warnings.length + ' cảnh báo' : '') : '', b, true);
 }
@@ -470,6 +507,12 @@ function viewSettings() {
     '<button class="btn sm" data-act="addDash" style="margin-top:8px">+ Thêm báo cáo</button></div></div>';
   h += '<div class="card"><div class="hd"><span class="ttl">Email nhận thông báo (cách nhau bằng dấu phẩy)</span></div><div class="bd"><input type="text" data-setlist="notifyEmails" value="' + esc((s.notifyEmails || []).join(', ')) + '"></div></div>';
   h += viewReportSettings();
+  h += '<div class="card"><div class="hd"><span class="ttl">QC nội dung</span></div><div class="bd">' +
+    '<label>Người được duyệt QC (email, cách nhau bằng dấu phẩy). Để trống = chỉ chủ app.</label><input type="text" data-setlist="qcReviewers" value="' + esc((s.qcReviewers || []).join(', ')) + '">' +
+    '<label style="margin-top:10px;display:block">Bộ luật (JSON). ' + ((s.qcRules || []).length ? 'Đang dùng bộ đã sửa: ' + s.qcRules.length + ' luật.' : 'Trống = dùng bộ mặc định theo 2 tài liệu chính sách.') +
+    ' Mỗi luật: id, level (YELLOW/ORANGE/RED/BLACK), src, pattern (regex), msg, fix, replace (tự thay).</label>' +
+    '<textarea id="qc-json" style="min-height:140px;font-family:monospace;font-size:12px">' + esc((s.qcRules || []).length ? JSON.stringify(s.qcRules, null, 2) : '[]') + '</textarea>' +
+    '<button class="btn sm" data-act="qcRulesDefault" style="margin-top:6px">Nạp bộ mặc định để sửa</button></div></div>';
   h += '<div class="card"><div class="hd"><span class="ttl">Nâng cao: tài khoản, trang, khu vực (JSON)</span></div><div class="bd"><textarea id="adv-json" style="min-height:220px;font-family:monospace;font-size:12px">' +
     esc(JSON.stringify({ accounts: s.accounts, regions: s.regions, defaults: s.defaults }, null, 2)) + '</textarea></div></div>';
   return h + '<button class="btn p" data-act="saveSettings">Lưu cài đặt</button>';
@@ -486,7 +529,7 @@ function numIf(path, v) { return /\.(ageMin|ageMax|dailyBudget)$/.test(path) ? (
 document.addEventListener('input', function (e) {
   var el = e.target;
   if (el.dataset.bind && S.order) {
-    setPath(S.order, el.dataset.bind, numIf(el.dataset.bind, el.value)); S.check = null; S.dirty = true;
+    setPath(S.order, el.dataset.bind, numIf(el.dataset.bind, el.value)); S.check = null; S.qc = null; S.dirty = true;
     if (el.dataset.counter) { var c = document.querySelector('[data-count="' + el.dataset.bind.replace(/\.message$/, '') + '"]'); if (c) c.textContent = el.value.length + ' ký tự'; }
   }
   if (el.dataset.search) { S.open[el.dataset.search] = el.value; var pos = el.selectionStart; render(); var n = document.querySelector('[data-search="' + el.dataset.search + '"]'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }
@@ -553,9 +596,9 @@ document.addEventListener('click', function (e) {
     done: function () { S.open[el.dataset.key] = false; rerender(); },
     expandAll: function () { setAll(true); rerender(); },
     collapseAll: function () { setAll(false); rerender(); },
-    newOrder: function () { S.order = blankOrder(); S.check = null; S.open = {}; S.dirty = false; go('edit'); },
-    editOrder: function () { call('getOrder', { id: id }).then(function (o) { S.order = o; S.check = null; S.open = { cd: false, nqc: true, qc: true }; o.adsets.forEach(function (g) { S.open['g_' + g.key] = false; }); o.ads.forEach(function (x) { S.open['a_' + x.key] = false; }); S.dirty = false; go('edit'); }); },
-    cloneOrder: function () { call('cloneOrder', { id: id }).then(function (o) { toast('Đã tạo ' + o.id); S.order = o; S.check = null; S.open = {}; go('edit'); }); },
+    newOrder: function () { S.order = blankOrder(); S.check = null; S.qc = null; S.open = {}; S.dirty = false; go('edit'); },
+    editOrder: function () { call('getOrder', { id: id }).then(function (o) { S.order = o; S.check = null; S.qc = null; S.open = { cd: false, nqc: true, qc: true }; o.adsets.forEach(function (g) { S.open['g_' + g.key] = false; }); o.ads.forEach(function (x) { S.open['a_' + x.key] = false; }); S.dirty = false; go('edit'); }); },
+    cloneOrder: function () { call('cloneOrder', { id: id }).then(function (o) { toast('Đã tạo ' + o.id); S.order = o; S.check = null; S.qc = null; S.open = {}; go('edit'); }); },
     cloneLive: function () { el.disabled = true; call('cloneLive', { campaignId: id }).then(function (o) { toast('Đã tạo đơn ' + o.id + ' từ camp đang chạy'); S.order = o; S.check = null; S.open = {}; go('edit'); }).catch(function () { el.disabled = false; }); },
     deleteOrder: function () { if (confirm('Xóa đơn nháp ' + id + '?')) call('deleteOrder', { id: id }).then(loadTab); },
     retry: function () { call('retryOrder', { id: id }).then(function () { toast('Đã đưa vào hàng chờ dựng lại'); loadTab(); }); },
@@ -597,9 +640,19 @@ document.addEventListener('click', function (e) {
     addAd: function () { S.order.ads.push(newAd(S.order.ads.length + 1)); S.dirty = true; rerender(); },
     dupAd: function () { var x = clone(S.order.ads[+el.dataset.i]); x.key = newAd(9).key; x.name = x.name + ' (bản sao)'; S.order.ads.splice(+el.dataset.i + 1, 0, x); S.open['a_' + x.key] = true; S.dirty = true; rerender(); },
     delAd: function () { if (confirm('Xóa quảng cáo này?')) { S.order.ads.splice(+el.dataset.i, 1); S.dirty = true; rerender(); } },
-    check: function () { call('validateOrder', { order: S.order }).then(function (c) { S.check = c; S.open.rv = true; rerender(); }); },
+    check: function () { runChecks().then(function () { S.open.rv = true; rerender(); }); },
     save: function () { el.disabled = true; saveQueued().then(function (o) { toast('Đã lưu ' + o.id);
-      return call('validateOrder', { order: S.order }); }).then(function (c) { S.check = c; rerender(); }).catch(function () { el.disabled = false; }); },
+      return runChecks(); }).then(function () { rerender(); }).catch(function () { el.disabled = false; }); },
+    qcFix: function () { call('qcAutoFix', { order: S.order }).then(function (r) { S.order.ads = r.order.ads; S.dirty = true; toast('Đã thay ' + r.replaced + ' cụm từ. Nhớ Lưu nháp.'); return runChecks(); }).then(rerender); },
+    sendQc: function () {
+      el.disabled = true;
+      saveQueued().then(function (o) { return call('sendToQc', { id: o.id }); })
+        .then(function () { toast('Đã gửi QC. Bạn sẽ nhận email khi có kết quả.'); S.order = null; S.dirty = false; go('orders'); })
+        .catch(function () { el.disabled = false; call('getOrder', { id: S.order.id }).then(function (o) { S.order.qc = o.qc; S.qc = o.qc && o.qc.result; rerender(); }); });
+    },
+    qcApprove: function () { qcDecide(true); },
+    qcReturn: function () { qcDecide(false); },
+    qcRulesDefault: function () { call('qcRulesDefault').then(function (r) { $('#qc-json').value = JSON.stringify(r, null, 2); toast('Đã nạp bộ luật mặc định, sửa rồi bấm Lưu cài đặt'); }); },
     submit: function () {
       if (!confirm('Gửi đơn để AI dựng camp trên Meta (tạm dừng, chưa tiêu tiền)?')) return;
       el.disabled = true;
@@ -632,6 +685,7 @@ document.addEventListener('click', function (e) {
     addIndustry: function () { S.settings.industries.push({ name: '', target: 120000 }); rerender(); },
     saveSettings: function () {
       try { var adv = JSON.parse($('#adv-json').value); Object.assign(S.settings, adv); } catch (err) { return toast('JSON nâng cao không hợp lệ', true); }
+      try { var qr = JSON.parse($('#qc-json').value || '[]'); if (!Array.isArray(qr)) throw 0; qr.forEach(function (r) { new RegExp(r.pattern, 'giu'); }); S.settings.qcRules = qr; } catch (err) { return toast('Bộ luật QC không hợp lệ (JSON hoặc regex sai)', true); }
       S.settings.industries = S.settings.industries.filter(function (x) { return x.name; });
       S.settings.dashboards = (S.settings.dashboards || []).filter(function (x) { return x.url; });
       call('saveSettings', { settings: S.settings }).then(function (s) { S.settings = s; toast('Đã lưu cài đặt'); render(); });
@@ -639,6 +693,20 @@ document.addEventListener('click', function (e) {
   };
   if (A[a]) { e.preventDefault(); A[a](); }
 });
+
+/** Config validation + content QC together. */
+function runChecks() {
+  return Promise.all([call('validateOrder', { order: S.order }), call('qcPreview', { order: S.order })])
+    .then(function (r) { S.check = r[0]; S.qc = r[1]; });
+}
+
+function qcDecide(approve) {
+  var note = ($('#qc-note') || {}).value || '';
+  if (!approve && !note.trim()) return toast('Ghi lý do trả về để người làm đơn biết cần sửa gì.', true);
+  if (approve && !confirm('Duyệt QC đơn ' + S.order.id + '?')) return;
+  call('qcDecide', { id: S.order.id, approve: approve, note: note }).then(function () {
+    toast(approve ? 'Đã duyệt QC' : 'Đã trả về'); S.order = null; go('orders'); });
+}
 
 /** Saves are chained so a quick "Lưu" then "Hoàn thành" never creates two orders. */
 function saveQueued() {

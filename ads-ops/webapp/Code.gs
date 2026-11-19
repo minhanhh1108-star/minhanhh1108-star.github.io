@@ -430,7 +430,7 @@ function saveOrder_(user, p) {
       o.ads = sanitizeAds_(incoming.ads);
       o.clonedFrom = incoming.clonedFrom || o.clonedFrom || '';
     }
-    if (o.status === STATUS.ERROR) o.status = STATUS.DRAFT;
+    if (o.status === STATUS.ERROR) { o.status = STATUS.DRAFT; if (o.build) o.build.error = ''; }
     writeOrder_(o);
     logAction_(user.email, o.id, 'Lưu đơn', '', 'OK', o.campaign && o.campaign.name || '');
     return o;

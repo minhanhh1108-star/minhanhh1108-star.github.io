@@ -28,6 +28,10 @@ var SHEETS = {
 /* =========================== Web entry =========================== */
 
 function doGet() {
+  if (!isInstalled_()) {
+    return HtmlService.createHtmlOutputFromFile('Setup').setTitle(APP_NAME + ' – cài đặt')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
   return HtmlService.createTemplateFromFile('Index').evaluate()
     .setTitle(APP_NAME)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
@@ -116,7 +120,35 @@ function setup() {
   ScriptApp.newTrigger('syncLibrary').timeBased().everyDays(1).atHour(6).create();
   Logger.log('Cơ sở dữ liệu: ' + ss.getUrl());
   Logger.log('Tài khoản quản trị: ' + owner + (pin ? ' · Mã PIN: ' + pin + ' (đổi ngay sau khi đăng nhập)' : ' (đã tồn tại)'));
-  try { syncLibrary(); syncLive(); } catch (e) { Logger.log('Đồng bộ lần đầu lỗi: ' + e.message); }
+  var syncError = '';
+  try { syncLibrary(); syncLive(); } catch (e) { syncError = e.message; Logger.log('Đồng bộ lần đầu lỗi: ' + e.message); }
+  return { dbUrl: ss.getUrl(), admin: owner, pin: pin, syncError: syncError };
+}
+
+function isInstalled_() {
+  var p = PropertiesService.getScriptProperties();
+  return !!(p.getProperty('META_TOKEN') && p.getProperty('DB_ID'));
+}
+
+/** First-run install from the web page. Only the script owner can run it. */
+function installApp(metaToken) {
+  var owner = Session.getEffectiveUser().getEmail();
+  var me = Session.getActiveUser().getEmail();
+  if (!me || lower_(me) !== lower_(owner)) throw new Error('Chỉ chủ app (' + owner + ') mới cài đặt được. Hãy mở link bằng đúng tài khoản Google đó.');
+  if (isInstalled_()) throw new Error('App đã được cài đặt.');
+  metaToken = String(metaToken || '').trim();
+  if (!metaToken) throw new Error('Chưa nhập token Meta.');
+  var check = gget('me', { fields: 'id,name' }, metaToken);
+  var perms = gget('me/permissions', {}, metaToken).data || [];
+  var granted = perms.filter(function (x) { return x.status === 'granted'; }).map(function (x) { return x.permission; });
+  var need = ['ads_management', 'ads_read', 'pages_show_list', 'pages_manage_ads', 'pages_read_engagement'];
+  var missing = need.filter(function (x) { return granted.indexOf(x) < 0; });
+  if (missing.length) throw new Error('Token thiếu quyền: ' + missing.join(', '));
+  PropertiesService.getScriptProperties().setProperty('META_TOKEN', metaToken);
+  var r = setup();
+  r.metaUser = check.name;
+  r.url = ScriptApp.getService().getUrl();
+  return r;
 }
 
 function defaultSettings_() {

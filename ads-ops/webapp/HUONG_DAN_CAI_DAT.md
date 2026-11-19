@@ -25,13 +25,20 @@ App tự dựng camp trên Meta ở trạng thái **tạm dừng**; chỉ ngư�
 
 Mọi người đăng nhập bằng **email + mã PIN** do quản trị cấp. Lý do: Apps Script không nhận ra người dùng Gmail cá nhân khi app chạy dưới quyền chủ app.
 
-## Cài đặt (khoảng 15 phút, làm 1 lần)
+## Cài đặt tự động (Claude đẩy code lên)
+1. Bật Apps Script API cho tài khoản: https://script.google.com/home/usersettings → "Google Apps Script API" = Bật.
+2. Cấp cho Claude một mã truy cập Google tạm thời (hết hạn sau 1 giờ) qua form bảo mật, phạm vi
+   `script.projects` + `script.deployments`. Claude chạy `ads-ops/tools/deploy_webapp.py` để tạo dự án và triển khai.
+3. Mở link web app Claude gửi → Google hỏi cấp quyền → Cho phép.
+4. Trang "Cài đặt lần đầu" hiện ra → dán token Meta → Cài đặt → ghi lại mã PIN quản trị.
+
+## Cài đặt thủ công (khoảng 15 phút, làm 1 lần)
 
 1. Vào https://script.google.com → **Dự án mới**. Đặt tên "Lên camp Meta".
 2. Bấm biểu tượng bánh răng **Cài đặt dự án** → tích **"Hiển thị tệp kê khai appsscript.json"**.
 3. Tạo các file với **đúng tên**, dán nội dung từ thư mục này:
    - Tệp tập lệnh (.gs): `Code`, `Meta`, `Validate`, `Sync`, `Build`
-   - Tệp HTML: `Index`, `Styles`, `App`
+   - Tệp HTML: `Index`, `Styles`, `App`, `Setup`
    - Thay nội dung `appsscript.json` bằng file cùng tên ở đây.
 4. **Cài đặt dự án → Thuộc tính tập lệnh → Thêm**: `META_TOKEN` = token System User Meta.
    Token chỉ nằm ở đây, không dán vào file nào khác.

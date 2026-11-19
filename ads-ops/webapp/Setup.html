@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background:#f4f6fb; color:#111827; margin:0; }
+    .box { max-width:560px; margin:60px auto; background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:26px; }
+    h1 { font-size:20px; margin:0 0 6px; color:#1f4e79; }
+    p, li { line-height:1.6; font-size:14px; }
+    textarea { width:100%; min-height:90px; border:1px solid #cbd5e1; border-radius:6px; padding:8px; font-family:monospace; font-size:12px; box-sizing:border-box; }
+    button { background:#1f4e79; color:#fff; border:0; border-radius:6px; padding:10px 16px; font-size:14px; cursor:pointer; margin-top:12px; }
+    button:disabled { opacity:.5; }
+    .ok { background:#e6f4ea; color:#137333; padding:12px; border-radius:6px; margin-top:14px; }
+    .err { background:#fde8e8; color:#b42318; padding:12px; border-radius:6px; margin-top:14px; }
+    .pin { font-size:26px; font-weight:700; letter-spacing:4px; }
+    .muted { color:#6b7280; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Cài đặt "Lên camp Meta" – lần đầu</h1>
+    <p>Bước cuối: dán <b>token System User của Meta</b> (token bạn đã tạo trong Business Manager). Token được lưu trong
+       thuộc tính bí mật của dự án Apps Script này, không hiện ra ở đâu khác.</p>
+    <textarea id="tok" placeholder="EAAG…" autocomplete="off"></textarea>
+    <p class="muted">Chỉ chủ app mới cài được. App sẽ tạo cơ sở dữ liệu, tài khoản quản trị, trình chạy nền và đồng bộ dữ liệu từ Meta (khoảng 1–2 phút).</p>
+    <button id="go" onclick="install()">Cài đặt</button>
+    <div id="out"></div>
+  </div>
+  <script>
+    function install() {
+      var b = document.getElementById('go'), out = document.getElementById('out');
+      b.disabled = true; b.textContent = 'Đang cài đặt… (1–2 phút)'; out.innerHTML = '';
+      google.script.run.withSuccessHandler(function (r) {
+        document.getElementById('tok').value = '';
+        out.innerHTML = '<div class="ok"><b>Đã cài đặt xong.</b><br>Token Meta: ' + r.metaUser +
+          '<br>Tài khoản quản trị: ' + r.admin + (r.pin ? '<br>Mã PIN quản trị (ghi lại, đổi sau khi đăng nhập):<div class="pin">' + r.pin + '</div>' : '') +
+          (r.syncError ? '<br>⚠ Đồng bộ lần đầu lỗi: ' + r.syncError + ' (vào app bấm "Đồng bộ" lại)' : '') +
+          '<br><br><a href="' + r.url + '" target="_top">Mở app và đăng nhập →</a></div>';
+        b.style.display = 'none';
+      }).withFailureHandler(function (e) {
+        out.innerHTML = '<div class="err">' + (e.message || e) + '</div>';
+        b.disabled = false; b.textContent = 'Cài đặt';
+      }).installApp(document.getElementById('tok').value);
+    }
+  </script>
+</body>
+</html>

@@ -82,6 +82,7 @@ function boot() {
 function loadTab() {
   var t = S.tab;
   if (t === 'orders') return call('listOrders').then(function (d) { S.orders = d; render(); });
+  if (t === 'charts') { S.chart = null; return call('chartData', { days: S.chartDays || 14 }).then(function (d) { S.chart = d; render(); }); }
   if (t === 'live') return call('listLive').then(function (d) { S.live = d; render(); });
   if (t === 'log') return call('listLog', { orderId: S.logFilter }).then(function (d) { S.log = d; render(); });
   if (t === 'users') return call('listUsers').then(function (d) { S.users = d; render(); });
@@ -94,7 +95,7 @@ function go(tab) { S.tab = tab; render(); loadTab(); }
 var ICONS = {
   live: '<path d="M3 12h4l3-8 4 16 3-8h4"/>', orders: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/>',
   edit: '<path d="M12 5v14M5 12h14"/>', dash: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', library: '<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 11a3 3 0 1 0 0-6M22 21c0-3-2-5-5-5"/>',
-  log: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>', users: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+  log: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>', charts: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>', users: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3.9V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'
 };
 function icon(k) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + (ICONS[k] || '') + '</svg>'; }
@@ -104,7 +105,7 @@ function render() {
   if (!S.user) { app.innerHTML = viewLogin(); return; }
   var qcWait = S.canQc ? S.orders.filter(function (o) { return o.status === 'Chờ QC'; }).length : 0;
   var groups = [['Vận Hành', [['edit', S.order && S.order.id ? 'Sửa Camp' : 'Lên Camp'], ['orders', 'Camp AI Lên', qcWait], ['live', 'Camp Đang Chạy']]],
-                ['Phân Tích', [['dash', 'Báo Cáo'], ['library', 'Tệp & Form'], ['log', 'Lịch Sử']]]];
+                ['Phân Tích', [['charts', 'Biểu Đồ'], ['dash', 'Báo Cáo'], ['library', 'Tệp & Form'], ['log', 'Lịch Sử']]]];
   if (role('admin')) groups.push(['Quản Trị', [['users', 'Team'], ['settings', 'Cài Đặt']]]);
   var nm = S.user.name && S.user.name !== S.user.roleLabel ? S.user.name : S.user.email;
   var html = '<div class="shell"><aside class="side"><div class="brand"><span class="logo">⚡</span><span>AI Agent Ads<small>Bot Bán Hàng · Meta Ads</small></span></div><nav class="menu">' +
@@ -118,7 +119,7 @@ function render() {
     '<div class="who"><div class="me"><span class="ava">' + esc(String(nm).trim().charAt(0).toUpperCase()) + '</span><div style="min-width:0"><div class="nm" title="' + esc(S.user.email) + '">' + esc(nm) + '</div>' +
     '<div class="rl">' + esc(S.user.roleLabel) + '</div></div></div>' +
     '<div class="acts"><button data-act="pin">🔑 Đổi PIN</button><button data-act="logout">⎋ Đăng xuất</button></div></div></aside><main>';
-  var v = { dash: viewDashboard, live: viewLive, orders: viewOrders, edit: viewEditor, library: viewLibrary, log: viewLog, users: viewUsers, settings: viewSettings }[S.tab];
+  var v = { charts: viewCharts, dash: viewDashboard, live: viewLive, orders: viewOrders, edit: viewEditor, library: viewLibrary, log: viewLog, users: viewUsers, settings: viewSettings }[S.tab];
   html += v ? v() : '';
   app.innerHTML = html + '</main></div>';
 }
@@ -144,8 +145,17 @@ function viewLogin() {
 }
 
 /* ================= Live ================= */
+/** CPL target for a campaign name: one matching industry → its target, else "Đa ngành". */
+function targetOfName(name) {
+  var low = String(name || '').toLowerCase();
+  var hits = S.settings.industries.filter(function (i) {
+    return [i.name].concat(i.keywords || []).some(function (k) { return k && low.indexOf(String(k).toLowerCase()) >= 0; }); });
+  var ind = hits.length === 1 ? hits[0] : S.settings.industries.filter(function (i) { return i.name === 'Đa ngành'; })[0];
+  return ind ? Number(ind.target) : null;
+}
+
 function viewLive() {
-  var targetOf = function (name) {
+  var targetOf = targetOfName; var unused_ = function (name) {
     var low = name.toLowerCase();
     var hits = S.settings.industries.filter(function (i) {
       return [i.name].concat(i.keywords || []).some(function (k) { return k && low.indexOf(String(k).toLowerCase()) >= 0; }); });
@@ -198,6 +208,143 @@ function viewLive() {
     });
   });
   return h + '</table></div>';
+}
+
+/* ================= Charts ================= */
+var C_OK = '#16a34a', C_BAD = '#dc2626', C_NEU = '#94a3b8', C_BLUE = '#2563eb', C_INK = '#334155';
+function kfmt(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace('.', ',') + 'tr' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(Math.round(n)); }
+function shortName(n, max) { n = String(n || ''); return n.length > max ? n.slice(0, max - 1) + '…' : n; }
+
+/** Horizontal bars with an optional target tick per row. rows: [{label, sub, value, target, text}] */
+function svgHBar(rows, opts) {
+  if (!rows.length) return '<p class="muted">Không có dữ liệu.</p>';
+  var W = 980, L = 290, R = 280, RH = 30, H = rows.length * RH + 12;
+  var max = Math.max.apply(null, rows.map(function (r) { return Math.max(r.value || 0, r.target || 0); })) || 1;
+  var x = function (v) { return L + (W - L - R) * v / max; };
+  var h = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="chart" role="img">';
+  rows.forEach(function (r, i) {
+    var y = i * RH + 6, col = r.target ? (r.value > r.target ? C_BAD : C_OK) : C_NEU;
+    h += '<g><title>' + esc(r.label + ' · ' + r.text + (r.target ? ' · mục tiêu ' + money(r.target) + 'đ' : '') + (r.sub ? ' · ' + r.sub : '')) + '</title>' +
+      '<text x="' + (L - 10) + '" y="' + (y + 15) + '" text-anchor="end" font-size="12.5" fill="' + C_INK + '">' + esc(shortName(r.label, 44)) + '</text>' +
+      '<rect x="' + L + '" y="' + (y + 3) + '" width="' + Math.max(2, x(r.value || 0) - L) + '" height="16" rx="4" fill="' + col + '" opacity=".85"/>' +
+      (r.target ? '<line x1="' + x(r.target) + '" x2="' + x(r.target) + '" y1="' + y + '" y2="' + (y + 22) + '" stroke="#0f172a" stroke-width="2"/>' : '') +
+      '<text x="' + (W - R + 14) + '" y="' + (y + 15) + '" font-size="12.5" font-weight="700" fill="' + col + '">' + esc(r.text) + '</text>' +
+      (r.sub ? '<text x="' + (W - 4) + '" y="' + (y + 15) + '" text-anchor="end" font-size="11" fill="#64748b">' + esc(r.sub) + '</text>' : '') + '</g>';
+  });
+  return h + '</svg>';
+}
+
+/** Daily bars (spend) + line (second metric) with two axes. */
+function svgCombo(days, bars, line, opts) {
+  var W = 900, H = 240, L = 54, R = 44, T = 14, B = 30, n = days.length || 1, bw = (W - L - R) / n;
+  var bmax = Math.max.apply(null, bars.concat([1])), lmax = Math.max.apply(null, line.concat([1]));
+  var yb = function (v) { return T + (H - T - B) * (1 - v / bmax); }, yl = function (v) { return T + (H - T - B) * (1 - v / lmax); };
+  var h = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="chart">';
+  [0, .5, 1].forEach(function (f) { var y = T + (H - T - B) * (1 - f); h += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="#e5e7eb"/>' +
+    '<text x="' + (L - 6) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="#64748b">' + kfmt(bmax * f) + '</text>' +
+    '<text x="' + (W - R + 6) + '" y="' + (y + 4) + '" font-size="11" fill="' + C_BLUE + '">' + Math.round(lmax * f) + '</text>'; });
+  var step = Math.ceil(n / 10);
+  days.forEach(function (d, i) {
+    var x = L + i * bw;
+    h += '<rect x="' + (x + bw * .15) + '" y="' + yb(bars[i]) + '" width="' + (bw * .7) + '" height="' + (H - B - yb(bars[i])) + '" rx="3" fill="#cbd5e1"><title>' + d.slice(8) + '/' + d.slice(5, 7) +
+      ': chi ' + money(bars[i]) + 'đ · ' + opts.lineName + ' ' + line[i] + '</title></rect>';
+    if (i % step === 0) h += '<text x="' + (x + bw / 2) + '" y="' + (H - 10) + '" text-anchor="middle" font-size="11" fill="#64748b">' + d.slice(8) + '/' + d.slice(5, 7) + '</text>';
+  });
+  h += '<polyline fill="none" stroke="' + C_BLUE + '" stroke-width="2.5" points="' + line.map(function (v, i) { return (L + i * bw + bw / 2) + ',' + yl(v); }).join(' ') + '"/>';
+  line.forEach(function (v, i) { h += '<circle cx="' + (L + i * bw + bw / 2) + '" cy="' + yl(v) + '" r="3" fill="' + C_BLUE + '"/>'; });
+  return h + '</svg>';
+}
+
+/** Line of a cost metric per day with a dashed target. null values = no data that day. */
+function svgCostLine(days, vals, target) {
+  var W = 900, H = 200, L = 54, R = 20, T = 14, B = 30, n = days.length || 1, bw = (W - L - R) / n;
+  var max = Math.max.apply(null, vals.filter(function (v) { return v != null; }).concat([target || 0, 1])) * 1.1;
+  var y = function (v) { return T + (H - T - B) * (1 - v / max); };
+  var h = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="chart">';
+  [0, .5, 1].forEach(function (f) { var yy = T + (H - T - B) * (1 - f); h += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="#e5e7eb"/><text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end" font-size="11" fill="#64748b">' + kfmt(max * f) + '</text>'; });
+  if (target) h += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(target) + '" y2="' + y(target) + '" stroke="#0f172a" stroke-dasharray="6 4"/><text x="' + (W - R) + '" y="' + (y(target) - 5) + '" text-anchor="end" font-size="11" fill="#0f172a">mục tiêu ' + kfmt(target) + '</text>';
+  var pts = [], step = Math.ceil(n / 10);
+  days.forEach(function (d, i) {
+    var cx = L + i * bw + bw / 2;
+    if (i % step === 0) h += '<text x="' + cx + '" y="' + (H - 10) + '" text-anchor="middle" font-size="11" fill="#64748b">' + d.slice(8) + '/' + d.slice(5, 7) + '</text>';
+    if (vals[i] == null) return;
+    pts.push(cx + ',' + y(vals[i]));
+    h += '<circle cx="' + cx + '" cy="' + y(vals[i]) + '" r="4" fill="' + (target && vals[i] > target ? C_BAD : C_OK) + '"><title>' + d.slice(8) + '/' + d.slice(5, 7) + ': ' + money(vals[i]) + 'đ</title></circle>';
+  });
+  return h.replace('class="chart">', 'class="chart"><polyline fill="none" stroke="#94a3b8" stroke-width="2" points="' + pts.join(' ') + '"/>') + '</svg>';
+}
+
+function viewCharts() {
+  var D = S.chart, days = S.chartDays || 14;
+  var head = pageHead('Biểu Đồ', D ? 'Dữ liệu ' + fmtTime(D.since, true) + ' → ' + fmtTime(D.until, true) + ' (đến hết hôm qua) · SĐT tính như báo cáo Telegram · Book = lượt mua trên Meta' : 'Đang tải dữ liệu từ Meta…',
+    '<button class="btn" data-act="chartRefresh">↻ Làm mới</button>');
+  var f = '<div class="filters">' + seg('chartDays', [[7, '7 ngày'], [14, '14 ngày'], [30, '30 ngày']], days);
+  if (!D) return head + f + '</div><div class="empty"><span class="spinner"></span> Đang lấy số liệu theo ngày từ Meta (10–30 giây)…</div>';
+  var accF = S.chartAcc || '';
+  f += seg('chartAcc', [['', 'Tất cả TK']].concat(D.accounts.map(function (a) { return [a.id, a.name]; })), accF) + '</div>';
+  var camps = D.campaigns.filter(function (c) { return !accF || c.account === accF; });
+  var accs = D.accounts.filter(function (a) { return !accF || a.id === accF; });
+  var tot = accs.reduce(function (o, a) { o.s += a.spend; o.l += a.leads; o.b += a.books; return o; }, { s: 0, l: 0, b: 0 });
+  var h = head + f;
+  h += '<div class="kpis"><div class="kpi"><div class="k">Chi tiêu ' + days + ' ngày</div><div class="v">' + money(tot.s) + 'đ</div></div>' +
+    '<div class="kpi"><div class="k">SĐT</div><div class="v">' + money(tot.l) + '</div><div class="h">' + (tot.l ? money(tot.s / tot.l) + 'đ/SĐT' : '') + '</div></div>' +
+    '<div class="kpi"><div class="k">Book lịch</div><div class="v">' + money(tot.b) + '</div><div class="h">' + (tot.l ? (tot.b / tot.l * 100).toFixed(1).replace('.', ',') + '% SĐT → Book' : '') + '</div></div>' +
+    '<div class="kpi"><div class="k">Chi phí/Book</div><div class="v">' + (tot.b ? money(tot.s / tot.b) + 'đ' : '—') + '</div></div></div>';
+
+  // 1. CPL per campaign vs industry target
+  var leadCamps = camps.filter(function (c) { return c.objective === 'OUTCOME_LEADS' || c.leads > 0; });
+  var r1 = leadCamps.map(function (c) { var v = c.leads ? c.spend / c.leads : c.spend, tg = targetOfName(c.name);
+    return { label: c.name, value: v, target: tg, text: c.leads ? money(v) + 'đ' : '0 SĐT · chi ' + kfmt(c.spend), sub: c.leads + ' SĐT · chi ' + kfmt(c.spend) }; })
+    .sort(function (a, b) { return (b.value / (b.target || b.value || 1)) - (a.value / (a.target || a.value || 1)); });
+  var over = r1.filter(function (r) { return r.target && r.value > r.target; }).length;
+  h += chartCard('① Chi phí/SĐT từng camp so với mục tiêu ngành', over ? '<span class="badge b-bad">' + over + ' camp vượt mục tiêu</span>' : '<span class="badge b-ok">Tất cả trong mục tiêu</span>',
+    '<div class="cwrap">' + svgHBar(r1) + '</div>' + legend([[C_BAD, 'Vượt mục tiêu'], [C_OK, 'Trong mục tiêu'], ['#0f172a', '│ Vạch mục tiêu ngành (sửa ở Cài Đặt)']]) +
+    '<p class="muted">Xếp theo mức vượt mục tiêu: camp nằm trên cùng là camp cần xử lý trước.</p>');
+
+  // 2. Trend for one campaign (or all)
+  var sel = S.chartCamp && camps.some(function (c) { return c.id === S.chartCamp; }) ? S.chartCamp : '';
+  var src = sel ? camps.filter(function (c) { return c.id === sel; }) : camps;
+  var sp = D.days.map(function (d) { return src.reduce(function (t, c) { return t + ((c.days[d] || {}).s || 0); }, 0); });
+  var ld = D.days.map(function (d) { return src.reduce(function (t, c) { return t + ((c.days[d] || {}).l || 0); }, 0); });
+  var cpl = D.days.map(function (d, i) { return ld[i] ? sp[i] / ld[i] : null; });
+  var tg2 = sel ? targetOfName(src[0].name) : null;
+  var half = Math.floor(D.days.length / 2), sum = function (a, from, to) { return a.slice(from, to).reduce(function (x, y) { return x + y; }, 0); };
+  var c1 = sum(ld, 0, half) ? sum(sp, 0, half) / sum(ld, 0, half) : 0, c2 = sum(ld, half) ? sum(sp, half) / sum(ld, half) : 0;
+  var trend = c1 && c2 ? (c2 > c1 * 1.1 ? '<span class="badge b-bad">Đang xấu đi: ' + money(c1) + ' → ' + money(c2) + 'đ/SĐT</span>' : c2 < c1 * .9 ? '<span class="badge b-ok">Đang tốt lên: ' + money(c1) + ' → ' + money(c2) + 'đ/SĐT</span>' : '<span class="badge b-gray">Ổn định quanh ' + money(c2) + 'đ/SĐT</span>') : '';
+  h += chartCard('② Xu hướng theo ngày', trend,
+    '<div class="filters" style="margin-bottom:6px"><select data-chartcamp style="max-width:460px"><option value="">Tất cả camp' + (accF ? ' của tài khoản' : '') + '</option>' +
+      camps.slice().sort(function (a, b) { return b.spend - a.spend; }).map(function (c) { return '<option value="' + c.id + '"' + (c.id === sel ? ' selected' : '') + '>' + esc(c.name) + ' · ' + kfmt(c.spend) + '</option>'; }).join('') + '</select></div>' +
+    '<div class="lbl" style="margin:6px 0 2px">Chi tiêu (cột xám) và SĐT (đường xanh)</div>' + '<div class="cwrap">' + svgCombo(D.days, sp, ld, { lineName: 'SĐT' }) + '</div>' +
+    '<div class="lbl" style="margin:12px 0 2px">Chi phí/SĐT mỗi ngày' + (tg2 ? '' : ' <span class="muted">(chọn 1 camp để thấy vạch mục tiêu)</span>') + '</div>' + '<div class="cwrap">' + svgCostLine(D.days, cpl, tg2) + '</div>' +
+    '<p class="muted">So sánh nửa đầu và nửa sau kỳ: lệch hơn 10% mới tính là xấu đi/tốt lên. Đừng tắt camp chỉ vì 1 ngày xấu.</p>');
+
+  // 3. Cost per Book
+  var bt = function (acc) { return Number((S.settings.bookTargets || {})[acc]) || null; };
+  var r3 = camps.filter(function (c) { return c.spend > 0 && (c.leads > 0 || c.books > 0); }).map(function (c) {
+    return { label: c.name, value: c.books ? c.spend / c.books : c.spend, target: bt(c.account), text: c.books ? money(c.spend / c.books) + 'đ' : '0 Book · chi ' + kfmt(c.spend), sub: c.books + ' Book / ' + c.leads + ' SĐT' }; })
+    .sort(function (a, b) { return b.value - a.value; });
+  h += chartCard('③ Chi phí/Book lịch từng camp', accs.some(function (a) { return bt(a.id); }) ? '' : '<span class="muted">Chưa đặt mục tiêu chi phí/Book (Cài Đặt → Chung)</span>',
+    '<div class="cwrap">' + svgHBar(r3) + '</div>' + '<p class="muted">Book đến chậm vài ngày sau khi có SĐT (telesale gọi rồi mới book), nên kỳ 7 ngày thường thấp hơn thực tế. Đánh giá Book nên xem kỳ 14–30 ngày. Camp "0 Book" có chi tiêu cao là camp cần xem lại chất lượng SĐT.</p>');
+
+  // 4. Month to date per account
+  h += chartCard('④ Chi tiêu tháng này theo tài khoản', '', D.accounts.map(function (a) {
+    var m = a.month, cap = Math.max(m.budget, m.projected, m.spend) || 1, pct = function (v) { return Math.min(100, v / cap * 100); };
+    var warn = m.budget && m.projected > m.budget ? '<span class="badge b-bad">Dự kiến vượt ' + money(m.projected - m.budget) + 'đ</span>' : m.budget ? '<span class="badge b-ok">Trong ngân sách</span>' : '<span class="muted">Chưa đặt ngân sách tháng</span>';
+    return '<div style="margin:10px 0 16px"><div class="bar"><b>' + esc(a.name) + '</b>' + warn + '<span class="muted right">ngày ' + m.elapsed + '/' + m.daysInMonth + '</span></div>' +
+      '<div style="position:relative;height:22px;background:#eef2f6;border-radius:6px;margin-top:6px;overflow:hidden">' +
+      '<div style="position:absolute;left:0;top:0;bottom:0;width:' + pct(m.projected) + '%;background:#bfdbfe"></div>' +
+      '<div style="position:absolute;left:0;top:0;bottom:0;width:' + pct(m.spend) + '%;background:' + C_BLUE + '"></div>' +
+      (m.budget ? '<div style="position:absolute;top:-2px;bottom:-2px;width:2px;background:#0f172a;left:' + pct(m.budget) + '%"></div>' : '') + '</div>' +
+      '<div class="bar muted" style="margin-top:4px"><span>Đã chi <b style="color:var(--ink)">' + money(m.spend) + 'đ</b></span><span>Dự kiến cả tháng ' + money(m.projected) + 'đ</span>' +
+      (m.budget ? '<span>Ngân sách ' + money(m.budget) + 'đ</span>' : '') + '<span>' + m.books + ' Book · ' + (m.books ? money(m.spend / m.books) + 'đ/Book' : '—') + '</span></div></div>';
+  }).join('') + legend([[C_BLUE, 'Đã chi'], ['#bfdbfe', 'Dự kiến cả tháng (theo tốc độ hiện tại)'], ['#0f172a', '│ Ngân sách tháng']]));
+  return h + '<p class="muted">Cập nhật ' + esc(fmtTime(D.updatedAt)) + ' · lưu tạm 20 phút, bấm "Làm mới" để lấy số mới nhất.</p>';
+}
+function chartCard(title, right, body) {
+  return '<div class="card"><div class="hd" style="cursor:default"><span class="ttl">' + title + '</span><span class="right">' + (right || '') + '</span></div><div class="bd">' + body + '</div></div>';
+}
+function legend(items) {
+  return '<div class="bar" style="gap:16px;margin-top:6px">' + items.map(function (it) { return '<span class="muted"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + it[0] + ';margin-right:5px;vertical-align:-1px"></span>' + it[1] + '</span>'; }).join('') + '</div>';
 }
 
 /* ================= Orders ================= */
@@ -647,6 +794,13 @@ function viewSettings() {
   h += '<div class="card"><div class="hd"><span class="ttl">Mục tiêu chi phí/lead theo ngành</span><span class="muted">Camp Đang Chạy tô đỏ camp có chi phí/lead cao hơn mục tiêu ngành (nhận ngành từ tên camp)</span></div><div class="bd">' + s.industries.map(function (x, i) {
     return '<div class="row" style="margin-top:6px"><div class="fld"><input type="text" data-set="industries.' + i + '.name" value="' + esc(x.name) + '"></div><div class="fld s"><input type="text" inputmode="numeric" data-money data-set="industries.' + i + '.target" value="' + moneyVal(x.target) + '"></div></div>'; }).join('') +
     '<button class="btn sm" data-act="addIndustry" style="margin-top:8px">+ Thêm ngành</button></div></div>';
+  s.monthBudgets = s.monthBudgets || {}; s.bookTargets = s.bookTargets || {};
+  h += '<div class="card"><div class="hd"><span class="ttl">Ngân sách tháng & mục tiêu chi phí/Book</span><span class="muted">Dùng cho tab Biểu Đồ (④ và ③). Để trống nếu chưa chốt.</span></div><div class="bd">' +
+    (s.accounts || []).map(function (a) {
+      return '<div class="row" style="margin-top:8px;align-items:flex-end"><div class="fld" style="flex:0 0 200px"><span class="lbl">' + esc(a.name) + '</span><span class="muted">' + esc(a.pageName || '') + '</span></div>' +
+        '<div class="fld" style="flex:0 1 260px"><label>Ngân sách tháng</label><input type="text" inputmode="numeric" data-money data-set="monthBudgets.' + a.id + '" value="' + moneyVal(s.monthBudgets[a.id]) + '" placeholder="vd 60.000.000đ"></div>' +
+        '<div class="fld" style="flex:0 1 260px"><label>Mục tiêu chi phí/Book</label><input type="text" inputmode="numeric" data-money data-set="bookTargets.' + a.id + '" value="' + moneyVal(s.bookTargets[a.id]) + '" placeholder="vd 300.000đ"></div></div>'; }).join('') +
+    '</div></div>';
   s.dashboards = s.dashboards || [];
   h += '<div class="card"><div class="hd"><span class="ttl">Dashboard (link Looker Studio)</span></div><div class="bd">' + s.dashboards.map(function (x, i) {
     return '<div class="row" style="margin-top:6px"><div class="fld s" style="flex:0 0 200px"><input type="text" placeholder="Tên, vd: Báo cáo Ads" data-set="dashboards.' + i + '.name" value="' + esc(x.name) + '"></div>' +
@@ -691,6 +845,7 @@ document.addEventListener('input', function (e) {
     if (el.dataset.counter) { var c = document.querySelector('[data-count="' + el.dataset.bind.replace(/\.message$/, '') + '"]'); if (c) c.textContent = el.value.length + ' ký tự'; }
   }
   if (el.dataset.search) { S.open[el.dataset.search] = el.value; var pos = el.selectionStart; render(); var n = document.querySelector('[data-search="' + el.dataset.search + '"]'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }
+  if (el.dataset.chartcamp !== undefined) { S.chartCamp = el.value; var y0 = window.scrollY; render(); window.scrollTo(0, y0); }
   if (el.dataset.ordq !== undefined) { S.ordQ = el.value; var p3 = el.selectionStart; render(); var o3 = document.querySelector('[data-ordq]'); o3.focus(); o3.setSelectionRange(p3, p3); }
   if (el.dataset.libq !== undefined) { S.libFilter.q = el.value; var p2 = el.selectionStart; render(); var m = document.querySelector('[data-libq]'); m.focus(); m.setSelectionRange(p2, p2); }
   if (el.dataset.logf !== undefined) S.logFilter = el.value;
@@ -778,6 +933,7 @@ document.addEventListener('click', function (e) {
     pauseLive: function () { confirmBox('Tạm dừng camp?', '<b>' + esc(el.dataset.name) + '</b> ngừng tiêu tiền ngay.', 'Tạm dừng').then(function (v) { if (v) call('pauseLive', { campaignId: id, name: el.dataset.name }).then(function () { toast('Đã tạm dừng'); loadTab(); }); }); },
     orderLog: function () { S.logFilter = id; go('log'); },
     reloadLog: function () { loadTab(); },
+    chartRefresh: function () { el.innerHTML = '<span class="spinner"></span> Đang lấy…'; call('chartData', { days: S.chartDays || 14, refresh: true }).then(function (d) { S.chart = d; toast('Đã cập nhật số liệu'); rerender(); }).catch(rerender); },
     clearLog: function () { S.logFilter = ''; loadTab(); },
     syncLive: function () { el.innerHTML = '<span class="spinner"></span> Đang đồng bộ…'; el.disabled = true; call('syncLive').then(function (d) { S.live = d; toast('Đã đồng bộ'); render(); }).catch(rerender); },
     syncOrders: function () { el.innerHTML = '<span class="spinner"></span> Đang đồng bộ…'; el.disabled = true;
@@ -810,6 +966,8 @@ document.addEventListener('click', function (e) {
     delAd: function () { confirmBox('Xóa quảng cáo này?', '', 'Xóa').then(function (v) { if (v) { S.order.ads.splice(+el.dataset.i, 1); S.dirty = true; rerender(); } }); },
     seg: function () {
       var k = el.dataset.seg, v = el.dataset.v;
+      if (k === 'chartDays') { S.chartDays = Number(v); return loadTab(); }
+      if (k === 'chartAcc') { S.chartAcc = v; S.chartCamp = ''; return rerender(); }
       if (k === 'liveAcc') S.liveF.acc = v; else if (k === 'liveOver') S.liveF.over = v; else if (k === 'ord') S.ordF = v; else if (k === 'set') S.setTab = v;
       if (k === 'set') { document.querySelectorAll('.stab').forEach(function (x) { x.classList.toggle('on', x.dataset.s === v); }); el.parentNode.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === el); }); return; }
       rerender();

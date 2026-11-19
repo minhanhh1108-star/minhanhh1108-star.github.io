@@ -80,6 +80,7 @@ function handlers_() { return {
   pauseOrder:    { role: 'approver', fn: pauseOrder_ },
   pauseLive:     { role: 'approver', fn: pauseLive_ },
   listLive:      { role: 'content',  fn: function () { return listLive_(); } },
+  chartData:     { role: 'content',  fn: function (u, p) { return chartData_(p); } },
   syncLive:      { role: 'runner',   fn: function () { return syncLive(); } },
   syncOrders:    { role: 'runner',   fn: function () { return syncOrderStatuses(); } },
   cloneLive:     { role: 'runner',   fn: cloneLive_ },
@@ -187,6 +188,7 @@ function defaultSettings_() {
               audienceMaxDays: 90, primaryTextChars: 125, frequencyWarn: 2.5 },
     defaults: { ageMin: 23, ageMax: 55, gender: 'all', cta: 'SIGN_UP', attributionDays: 1, defaultFormByPage: {} },
     approvers: [],
+    monthBudgets: {}, bookTargets: {},
     notifyEmails: [],
     dashboards: []
   };
